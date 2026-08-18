@@ -11,7 +11,8 @@ add_library(smoothwheel_core
   src/transform.cpp
   src/relay.cpp
   src/config.cpp
-  src/daemon.cpp)
+  src/daemon.cpp
+  src/environment.cpp)
 target_compile_features(smoothwheel_core PUBLIC cxx_std_20)
 target_include_directories(smoothwheel_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(smoothwheel_core PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>)
@@ -34,6 +35,7 @@ if(BUILD_TESTING)
   add_test(NAME cli_help COMMAND smoothwheel --help)
   add_test(NAME cli_version COMMAND smoothwheel --version)
   add_test(NAME cli_devices COMMAND smoothwheel devices)
+  add_test(NAME cli_environment COMMAND smoothwheel environment)
   add_test(NAME cli_acceleration_profiles COMMAND smoothwheel accelerate --profiles)
   add_test(NAME cli_daemon_missing_config COMMAND smoothwheel daemon --config ${CMAKE_CURRENT_BINARY_DIR}/does-not-exist.conf)
   set_tests_properties(cli_daemon_missing_config PROPERTIES WILL_FAIL TRUE)

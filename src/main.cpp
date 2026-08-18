@@ -7,6 +7,7 @@
 
 #include "smoothwheel/config.hpp"
 #include "smoothwheel/daemon.hpp"
+#include "smoothwheel/environment.hpp"
 #include "smoothwheel/experiment.hpp"
 #include "smoothwheel/input.hpp"
 #include "smoothwheel/relay.hpp"
@@ -20,6 +21,7 @@ void print_help() {
       << "Native smooth mouse-wheel scrolling for Linux.\n\n"
       << "Usage:\n"
       << "  smoothwheel devices\n"
+      << "  smoothwheel environment\n"
       << "  smoothwheel configure DEVICE [--profile NAME] [--config FILE]\n"
       << "  smoothwheel daemon [--config FILE]\n"
       << "  smoothwheel doctor [--config FILE]\n"
@@ -90,6 +92,7 @@ int main(int argc, char** argv) {
   if (arg == "--help" || arg == "-h") { print_help(); return 0; }
   if (arg == "--version" || arg == "-V") { std::cout << "smoothwheel " << smoothwheel::kVersion << '\n'; return 0; }
   if (arg == "devices" && argc == 2) return devices();
+  if (arg == "environment" && argc == 2) return smoothwheel::print_environment(std::cout);
   if (arg == "configure" && argc >= 3) {
     std::string profile = "balanced";
     std::filesystem::path config_path = "/etc/smoothwheel/config.conf";

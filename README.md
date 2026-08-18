@@ -20,7 +20,7 @@ uinput virtual pointer
 libinput → Wayland / XWayland / X11 → applications
 ```
 
-SmoothWheel is still developmental. Real-hardware pass-through and acceleration have been validated on the initial Linux test machine, but crash/reconnect, suspend/resume, broader device diversity and application compatibility remain active hardening work.
+SmoothWheel is still developmental. Real-hardware pass-through, acceleration, forced-crash recovery, receiver reconnect, and suspend/resume have been validated on the primary Linux test machine. Broader device diversity, application compatibility, and long-running resource/latency evidence remain active hardening work.
 
 ## Build and test
 
@@ -130,9 +130,10 @@ Do not hand-edit event-node numbers into configuration. `device_vendor`, `device
 
 ## Diagnostics and reconnaissance
 
-These commands are non-invasive and useful when diagnosing hardware:
+These commands are non-invasive and useful when diagnosing hardware or compatibility:
 
 ```bash
+smoothwheel environment
 smoothwheel inspect /dev/input/eventX
 smoothwheel monitor /dev/input/eventX --record mouse.trace
 ```
@@ -149,7 +150,7 @@ smoothwheel monitor /dev/input/eventX --record mouse.trace
 - **Keep configuration small.** Expose user concepts, not every internal tuning constant.
 - **Never guess which device to grab.** Ambiguity is a failure state, not a precedence rule.
 
-See [`ROADMAP.md`](ROADMAP.md) for checkpoint scope and [`HANDOVER.md`](HANDOVER.md) for the current development state.
+See [`ROADMAP.md`](ROADMAP.md) for checkpoint scope, [`HANDOVER.md`](HANDOVER.md) for the current development state, and [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the application test matrix.
 
 ## Development-only virtual-wheel experiment
 
