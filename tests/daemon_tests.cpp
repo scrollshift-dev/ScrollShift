@@ -1,4 +1,4 @@
-#include "smoothwheel/daemon.hpp"
+#include "scrollshift/daemon.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -12,7 +12,7 @@
 
 int main() {
   namespace fs = std::filesystem;
-  const fs::path root = fs::temp_directory_path() / ("smoothwheel-daemon-test-" + std::to_string(::getpid()));
+  const fs::path root = fs::temp_directory_path() / ("scrollshift-daemon-test-" + std::to_string(::getpid()));
   const fs::path input_root = root / "input";
   const fs::path config = root / "config.conf";
   fs::create_directories(input_root);
@@ -30,7 +30,7 @@ int main() {
   assert(child >= 0);
   if (child == 0) {
     std::ostringstream output;
-    const int rc = smoothwheel::run_daemon(config, output, input_root, root / "no-uinput");
+    const int rc = scrollshift::run_daemon(config, output, input_root, root / "no-uinput");
     _exit(rc);
   }
 

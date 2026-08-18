@@ -1,4 +1,4 @@
-#include "smoothwheel/input.hpp"
+#include "scrollshift/input.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 constexpr std::size_t kBitsPerWord = sizeof(unsigned long) * 8;
 
@@ -172,8 +172,8 @@ TraceSummary summarize_trace(const std::vector<RecordedEvent>& events) {
 
 int monitor_input_device(const std::filesystem::path& path, std::ostream& out, std::ostream* record, bool wheel_only) {
   const int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
-  if (fd < 0) { out << "smoothwheel: cannot open " << path << ": " << std::strerror(errno) << '\n'; return 1; }
-  if (record) *record << "# smoothwheel-event-trace v1\n# sec usec type code value\n";
+  if (fd < 0) { out << "scrollshift: cannot open " << path << ": " << std::strerror(errno) << '\n'; return 1; }
+  if (record) *record << "# scrollshift-event-trace v1\n# sec usec type code value\n";
   out << "Reading " << path << " read-only. Press Ctrl-C to stop.\n";
   input_event raw{};
   while (true) {
@@ -186,10 +186,10 @@ int monitor_input_device(const std::filesystem::path& path, std::ostream& out, s
       continue;
     }
     if (n < 0 && errno == EINTR) continue;
-    if (n < 0) out << "smoothwheel: read failed: " << std::strerror(errno) << '\n';
-    else out << "smoothwheel: input device closed or returned a partial event\n";
+    if (n < 0) out << "scrollshift: read failed: " << std::strerror(errno) << '\n';
+    else out << "scrollshift: input device closed or returned a partial event\n";
     ::close(fd); return 1;
   }
 }
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

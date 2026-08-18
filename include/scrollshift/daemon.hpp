@@ -3,7 +3,7 @@
 #include <iosfwd>
 #include <string>
 
-namespace smoothwheel {
+namespace scrollshift {
 int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
                const std::filesystem::path& input_root = "/dev/input");
 int run_daemon(const std::filesystem::path& config_path, std::ostream& output,

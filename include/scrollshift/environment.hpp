@@ -2,6 +2,6 @@
 
 #include <iosfwd>
 
-namespace smoothwheel {
+namespace scrollshift {
 int print_environment(std::ostream& output);
 }

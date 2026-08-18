@@ -1,10 +1,10 @@
-#include "smoothwheel/environment.hpp"
+#include "scrollshift/environment.hpp"
 
 #include <cstdlib>
 #include <ostream>
 #include <sys/utsname.h>
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 const char* env_or_unknown(const char* name) {
   const char* value = std::getenv(name);
@@ -25,4 +25,4 @@ int print_environment(std::ostream& output) {
          << "X display: " << env_or_unknown("DISPLAY") << '\n';
   return 0;
 }
-}  // namespace smoothwheel
+}  // namespace scrollshift

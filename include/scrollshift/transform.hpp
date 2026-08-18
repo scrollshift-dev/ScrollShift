@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "smoothwheel/velocity.hpp"
+#include "scrollshift/velocity.hpp"
 
-namespace smoothwheel {
+namespace scrollshift {
 
 struct AccelerationProfile {
   std::string name;
@@ -29,4 +29,4 @@ class WheelPacketTransformer {
   double horizontal_legacy_remainder_{0.0};
 };
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

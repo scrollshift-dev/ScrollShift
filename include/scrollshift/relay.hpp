@@ -3,7 +3,7 @@
 #include <iosfwd>
 #include <string>
 
-namespace smoothwheel {
+namespace scrollshift {
 void install_relay_signal_handlers();
 void reset_relay_stop_request();
 bool relay_stop_requested();

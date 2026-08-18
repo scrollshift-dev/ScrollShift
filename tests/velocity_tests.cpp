@@ -1,10 +1,10 @@
-#include "smoothwheel/velocity.hpp"
+#include "scrollshift/velocity.hpp"
 #include <cassert>
 #include <chrono>
 #include <iostream>
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
   using namespace std::chrono_literals;
 
   VelocityConfig cfg{520.0, 35.0, 0.45, 9.0, 0.32, 3.00};

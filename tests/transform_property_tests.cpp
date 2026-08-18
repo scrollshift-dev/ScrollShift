@@ -1,4 +1,4 @@
-#include "smoothwheel/transform.hpp"
+#include "scrollshift/transform.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -30,7 +30,7 @@ bool is_wheel_code(unsigned short code) {
 }
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
   const auto* profile = find_acceleration_profile("balanced");
   assert(profile != nullptr);
 

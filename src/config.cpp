@@ -1,4 +1,4 @@
-#include "smoothwheel/config.hpp"
+#include "scrollshift/config.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -7,9 +7,9 @@
 #include <iomanip>
 #include <sstream>
 
-#include "smoothwheel/transform.hpp"
+#include "scrollshift/transform.hpp"
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 std::string trim(std::string value) {
   const auto first = std::find_if_not(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c) != 0; });
@@ -97,7 +97,7 @@ std::optional<DaemonConfig> load_config(const std::filesystem::path& path, std::
 
 std::string serialize_config(const DaemonConfig& config) {
   std::ostringstream out;
-  out << "# SmoothWheel configuration\n"
+  out << "# ScrollShift configuration\n"
       << "# Generated from a real input device; no /dev/input/eventN path is persisted.\n"
       << "device_vendor = 0x" << std::hex << std::setw(4) << std::setfill('0') << config.device.vendor << '\n'
       << "device_product = 0x" << std::setw(4) << config.device.product << std::dec << '\n';
@@ -125,7 +125,7 @@ bool is_capture_candidate(const DeviceInfo& device) {
   if (!device.relative_pointer) return false;
   if (!(device.wheel || device.hi_res_wheel || device.horizontal_wheel || device.hi_res_horizontal_wheel)) return false;
   if (device.vendor == 0x5357) return false;
-  if (device.name.starts_with("SmoothWheel ")) return false;
+  if (device.name.starts_with("ScrollShift ")) return false;
   return true;
 }
 
@@ -150,22 +150,22 @@ DeviceMatchDiagnosis diagnose_device_match(const std::vector<DeviceInfo>& device
 int write_config_for_device(const std::filesystem::path& device_path,
                             const std::filesystem::path& config_path,
                             const std::string& profile, std::ostream& output) {
-  if (!valid_profile(profile)) { output << "smoothwheel: unknown acceleration profile: " << profile << '\n'; return 2; }
+  if (!valid_profile(profile)) { output << "scrollshift: unknown acceleration profile: " << profile << '\n'; return 2; }
   const auto device = inspect_input_device(device_path);
-  if (!device) { output << "smoothwheel: cannot inspect " << device_path << '\n'; return 1; }
-  if (!is_capture_candidate(*device)) { output << "smoothwheel: " << device_path << " is not a supported wheel pointer\n"; return 1; }
+  if (!device) { output << "scrollshift: cannot inspect " << device_path << '\n'; return 1; }
+  if (!is_capture_candidate(*device)) { output << "scrollshift: " << device_path << " is not a supported wheel pointer\n"; return 1; }
   std::error_code ec;
   if (config_path.has_parent_path()) std::filesystem::create_directories(config_path.parent_path(), ec);
-  if (ec) { output << "smoothwheel: cannot create " << config_path.parent_path() << ": " << ec.message() << '\n'; return 1; }
+  if (ec) { output << "scrollshift: cannot create " << config_path.parent_path() << ": " << ec.message() << '\n'; return 1; }
   std::ofstream out(config_path, std::ios::trunc);
-  if (!out) { output << "smoothwheel: cannot write " << config_path << '\n'; return 1; }
+  if (!out) { output << "scrollshift: cannot write " << config_path << '\n'; return 1; }
   out << serialize_config(config_for_device(*device, profile));
   out.close();
-  if (!out) { output << "smoothwheel: failed while writing " << config_path << '\n'; return 1; }
+  if (!out) { output << "scrollshift: failed while writing " << config_path << '\n'; return 1; }
   output << "Configured " << device->name << " (" << std::hex << std::setfill('0') << std::setw(4)
          << device->vendor << ':' << std::setw(4) << device->product << std::dec << ")\n"
          << "Profile: " << profile << "\nConfig: " << config_path << '\n';
   return 0;
 }
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

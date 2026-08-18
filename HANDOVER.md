@@ -1,14 +1,14 @@
-# SmoothWheel development handover
+# ScrollShift development handover
 
 ## Canonical state
 
-SmoothWheel has completed input reconnaissance (CP1), the initial virtual-output feasibility gate (CP2), and transparent physical-pointer pass-through on real hardware (CP3). Normal timed expiry and Ctrl-C recovery of exclusive capture are also proven. CP4 remains open only for abnormal-death/device-loss recovery evidence. CP5 is now active: a deterministic velocity estimator and packet-level acceleration transformer are implemented, with the first real-hardware acceleration tuning gate next.
+ScrollShift has completed input reconnaissance (CP1), the initial virtual-output feasibility gate (CP2), and transparent physical-pointer pass-through on real hardware (CP3). Normal timed expiry and Ctrl-C recovery of exclusive capture are also proven. CP4 remains open only for abnormal-death/device-loss recovery evidence. CP5 is now active: a deterministic velocity estimator and packet-level acceleration transformer are implemented, with the first real-hardware acceleration tuning gate next.
 
-The paired website repository is `SmoothWheel/SmoothWheel.github.io`. It is built with Nift and intentionally presents SmoothWheel as early development until the feasibility and safety checkpoints are complete.
+The paired website repository is `ScrollShift/ScrollShift.github.io`. It is built with Nift and intentionally presents ScrollShift as early development until the feasibility and safety checkpoints are complete.
 
 ## Product goal
 
-SmoothWheel should bring SmoothScroll-style fluid wheel behaviour to Linux at a system-wide level rather than through browser extensions or application plugins.
+ScrollShift should bring SmoothScroll-style fluid wheel behaviour to Linux at a system-wide level rather than through browser extensions or application plugins.
 
 The current preferred architecture is:
 
@@ -17,7 +17,7 @@ physical mouse
     ↓
 Linux evdev device
     ↓
-SmoothWheel input/capture layer
+ScrollShift input/capture layer
     ├── motion/buttons/other supported events → transparent pass-through
     └── wheel events → normalized smoothing engine
     ↓
@@ -52,7 +52,7 @@ The same USB receiver also exposes a separate Consumer Control event node with h
 
 ## Completed virtual-output feasibility (Checkpoint 2)
 
-A non-grabbing uinput feasibility spike is implemented. `smoothwheel experiment` creates a temporary virtual pointer with vertical/horizontal low-resolution and high-resolution wheel capabilities, emits one controlled gesture, then removes the device. The physical mouse is never grabbed. The gesture planner is deterministic and tested without requiring `/dev/uinput`.
+A non-grabbing uinput feasibility spike is implemented. `scrollshift experiment` creates a temporary virtual pointer with vertical/horizontal low-resolution and high-resolution wheel capabilities, emits one controlled gesture, then removes the device. The physical mouse is never grabbed. The gesture planner is deterministic and tested without requiring `/dev/uinput`.
 
 Available presets intentionally compare a conventional detent against 8/16/24 fractional high-resolution reports and a diagnostic high-resolution-only variant. Each fractional paired preset conserves exactly 120 v120 units and emits one matching legacy detent at the accumulated boundary. This follows the kernel wheel model while allowing us to test what the real desktop actually consumes.
 
@@ -60,17 +60,17 @@ The runtime uinput path was exercised on the real desktop. Fractional virtual wh
 
 ## Most important unresolved question
 
-Can SmoothWheel infer the user's scrolling intent from wheel cadence strongly enough that slow movement remains precise while rapid wheel spins become unmistakably faster, without adding floatiness or surprising reversals?
+Can ScrollShift infer the user's scrolling intent from wheel cadence strongly enough that slow movement remains precise while rapid wheel spins become unmistakably faster, without adding floatiness or surprising reversals?
 
 That is the current CP5 hardware gate. Smoothing/interpolation is secondary to intent-preserving acceleration.
 
 ## Safety invariant
 
-Exclusive device capture is dangerous if done casually. `EVIOCGRAB` prevents other clients from receiving events from the grabbed device. Once SmoothWheel starts grabbing a physical mouse, it is responsible for faithfully reproducing the events the desktop still needs.
+Exclusive device capture is dangerous if done casually. `EVIOCGRAB` prevents other clients from receiving events from the grabbed device. Once ScrollShift starts grabbing a physical mouse, it is responsible for faithfully reproducing the events the desktop still needs.
 
 The project's safety target is:
 
-> SmoothWheel must never knowingly trade smooth scrolling for fragile pointer ownership.
+> ScrollShift must never knowingly trade smooth scrolling for fragile pointer ownership.
 
 In practice:
 
@@ -114,7 +114,7 @@ High-resolution wheel support must preserve information rather than quantizing i
 
 ## Reinjection-loop prevention
 
-A virtual SmoothWheel device will itself appear in the Linux input subsystem. Device discovery must reliably identify and exclude SmoothWheel-created devices, otherwise the daemon can consume its own emitted events and create a feedback loop.
+A virtual ScrollShift device will itself appear in the Linux input subsystem. Device discovery must reliably identify and exclude ScrollShift-created devices, otherwise the daemon can consume its own emitted events and create a feedback loop.
 
 Design a deterministic identity strategy early (name/vendor/product/phys/uniq properties as appropriate) and regression-test the exclusion rule.
 
@@ -138,7 +138,7 @@ Treat per-application profiles as later work, not part of the initial architectu
 
 ## Performance targets
 
-SmoothWheel is latency-sensitive but not throughput-heavy. Optimize for:
+ScrollShift is latency-sensitive but not throughput-heavy. Optimize for:
 
 - negligible extra pointer-motion latency;
 - consistent scheduler timing;
@@ -227,13 +227,13 @@ A pure `VelocityEstimator` was introduced ahead of hardware capture work so this
 
 ## CP3/CP4 hardware gate
 
-A time-bounded `smoothwheel relay DEVICE --seconds N` experiment clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. That experiment remains useful for diagnostics, while a separate long-running daemon/service path now exists for dogfooding.
+A time-bounded `scrollshift relay DEVICE --seconds N` experiment clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. That experiment remains useful for diagnostics, while a separate long-running daemon/service path now exists for dogfooding.
 
 CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling, no obvious duplicate input, timed expiry, and Ctrl-C recovery all behaved normally. CP4 still requires deliberate forced-process-death and device-loss recovery evidence. If capability cloning later misses an event family, fix the generic model rather than hard-coding one mouse.
 
 ## CP5 packet-level acceleration prototype
 
-`smoothwheel accelerate DEVICE --profile NAME --seconds N` now runs the same safe, time-bounded exclusive relay but buffers one evdev packet through `SYN_REPORT` before transforming wheel events. This matters because the kernel can emit `REL_WHEEL` and `REL_WHEEL_HI_RES` together; the transformer derives one cadence multiplier per axis and applies it coherently to both representations while preserving pointer motion/buttons/other events.
+`scrollshift accelerate DEVICE --profile NAME --seconds N` now runs the same safe, time-bounded exclusive relay but buffers one evdev packet through `SYN_REPORT` before transforming wheel events. This matters because the kernel can emit `REL_WHEEL` and `REL_WHEEL_HI_RES` together; the transformer derives one cadence multiplier per axis and applies it coherently to both representations while preserving pointer motion/buttons/other events.
 
 Profiles are intentionally exaggerated enough to distinguish the product direction:
 
@@ -248,12 +248,12 @@ These are experimental tuning presets, not frozen user configuration. Real-hardw
 
 A first production-shaped runtime now exists:
 
-- `smoothwheel configure DEVICE [--profile NAME]` inspects a real device and writes `/etc/smoothwheel/config.conf`;
+- `scrollshift configure DEVICE [--profile NAME]` inspects a real device and writes `/etc/scrollshift/config.conf`;
 - configuration persists vendor/product + normalized kernel name, never `/dev/input/eventN`;
-- matching requires a relative wheel pointer and explicitly excludes SmoothWheel virtual devices;
+- matching requires a relative wheel pointer and explicitly excludes ScrollShift virtual devices;
 - zero matches cause the daemon to wait, while multiple matches cause it to refuse capture rather than guess;
-- `smoothwheel daemon` attaches with the configured acceleration profile and rediscovers after source-session failure;
-- `smoothwheel service enable|status|restart|start|stop|disable` provides simple systemd control;
+- `scrollshift daemon` attaches with the configured acceleration profile and rediscovers after source-session failure;
+- `scrollshift service enable|status|restart|start|stop|disable` provides simple systemd control;
 - the systemd unit uses `Restart=on-failure` and is installed with the binary;
 - the current permission model is a root system service, intentionally avoiding broad `/dev/input` permission changes during early development.
 
@@ -263,13 +263,13 @@ This milestone has deterministic parser/selector tests and a staged install-tree
 
 ## Checkpoint packaging
 
-When handing the repository to another environment, do not include the local CMake `build/` tree. CMake caches absolute source/build paths, so copying a configured build directory can make a clean checkout fail before compilation. Use `make checkpoint` to create `../SmoothWheel-checkpoint.zip`; it preserves Git metadata while excluding build/cache artifacts.
+When handing the repository to another environment, do not include the local CMake `build/` tree. CMake caches absolute source/build paths, so copying a configured build directory can make a clean checkout fail before compilation. Use `make checkpoint` to create `../ScrollShift-checkpoint.zip`; it preserves Git metadata while excluding build/cache artifacts.
 
 ## 2026-08-18 lifecycle hardening update
 
 The daemon/service layer now has deterministic regression coverage for device-match states (missing, unique, ambiguous) and prompt SIGTERM shutdown while waiting for a device even when `reconnect_ms` is configured to 30000 ms. Reconnect sleeps are interruptible in short quanta rather than one long uninterruptible sleep. The systemd unit uses `RestartPreventExitStatus=2`, so missing/invalid configuration exits do not loop forever under `Restart=on-failure`.
 
-`smoothwheel doctor` is a read-only/non-grabbing diagnostic that validates config and reports whether the configured stable identity is currently missing, uniquely ready, or ambiguous. `smoothwheel service logs` provides a compact journal view for dogfooding diagnostics.
+`scrollshift doctor` is a read-only/non-grabbing diagnostic that validates config and reports whether the configured stable identity is currently missing, uniquely ready, or ambiguous. `scrollshift service logs` provides a compact journal view for dogfooding diagnostics.
 
 Those lifecycle changes were subsequently exercised on real hardware; see the hardware lifecycle closure below.
 

@@ -1,20 +1,20 @@
 # Compatibility testing
 
-SmoothWheel sits below the compositor, but applications and toolkits can still interpret wheel events differently. “System-wide” therefore needs evidence across representative desktop/application classes rather than being inferred from one browser.
+ScrollShift sits below the compositor, but applications and toolkits can still interpret wheel events differently. “System-wide” therefore needs evidence across representative desktop/application classes rather than being inferred from one browser.
 
 ## Capture the environment
 
 Run as the logged-in desktop user (not through `sudo`):
 
 ```bash
-smoothwheel environment
+scrollshift environment
 ```
 
 Also record:
 
 ```bash
-smoothwheel --version
-sudo smoothwheel doctor
+scrollshift --version
+sudo scrollshift doctor
 ```
 
 The environment command reports the kernel, session type, desktop, and Wayland/X display variables without touching input devices.
@@ -47,4 +47,4 @@ A compatibility pass does not require every application to animate identically. 
 - the application remains usable after service restart/reconnect;
 - no duplicated wheel input is observed.
 
-If an application deliberately applies its own smoothing, note the interaction rather than assuming SmoothWheel should override it.
+If an application deliberately applies its own smoothing, note the interaction rather than assuming ScrollShift should override it.

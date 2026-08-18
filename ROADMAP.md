@@ -1,4 +1,4 @@
-# SmoothWheel roadmap
+# ScrollShift roadmap
 
 The first development phase is risk-first. The project should prove the Linux input pipeline, safety model and application compatibility before investing in a GUI, per-application profiles or broad packaging.
 
@@ -13,7 +13,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - make device/event inspection available through a non-invasive CLI mode;
 - add fixtures so recorded traces can feed later tests without physical hardware.
 
-**Exit evidence:** Complete. SmoothWheel identifies and inspects wheel-capable event nodes, records complete input streams read-only, and includes a permanent fixture derived from real hardware evidence.
+**Exit evidence:** Complete. ScrollShift identifies and inspects wheel-capable event nodes, records complete input streams read-only, and includes a permanent fixture derived from real hardware evidence.
 
 ## Checkpoint 2 — Virtual pointer feasibility spike ✅
 
@@ -52,7 +52,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - establish fail-open behaviour for abnormal process death;
 - document safe development/recovery procedure.
 
-**Exit evidence:** Complete on the primary Linux test machine. Transparent relay behavior passed normal expiry and Ctrl-C tests; the persistent service then passed normal restart, forced `SIGKILL`, receiver unplug/replug, and suspend/resume. Forced death immediately returned the physical mouse because kernel descriptor teardown released the grab, and systemd subsequently restarted SmoothWheel. Device loss/reappearance also recovered without relying on a persistent `/dev/input/eventN`.
+**Exit evidence:** Complete on the primary Linux test machine. Transparent relay behavior passed normal expiry and Ctrl-C tests; the persistent service then passed normal restart, forced `SIGKILL`, receiver unplug/replug, and suspend/resume. Forced death immediately returned the physical mouse because kernel descriptor teardown released the grab, and systemd subsequently restarted ScrollShift. Device loss/reappearance also recovered without relying on a persistent `/dev/input/eventN`.
 
 ## Checkpoint 5 — Velocity model and motion engine v1 🚧
 
@@ -92,7 +92,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Goal:** turn the prototype into an everyday background utility without making it a desktop application yet.
 
-- stable `smoothwheel` CLI and foreground diagnostic mode;
+- stable `scrollshift` CLI and foreground diagnostic mode;
 - device selection by stable identity rather than event node number;
 - minimal configuration file with validated values;
 - clean hotplug/reconnect handling;
@@ -100,13 +100,13 @@ The first development phase is risk-first. The project should prove the Linux in
 - systemd service integration;
 - clear diagnostics for missing permissions or unsupported devices.
 
-**Current state:** the first long-running daemon and systemd service are implemented. `smoothwheel configure DEVICE` persists vendor/product identity plus normalized kernel device name rather than `/dev/input/eventN`; the daemon rediscovers the current event node, waits through absence, retries after device-session failure, refuses ambiguous matches, and excludes SmoothWheel virtual devices from capture. `smoothwheel service enable|status|restart|start|stop|disable` wraps systemd operations, and the unit uses `Restart=on-failure`. The current permission model is deliberately a root system service; a less-privileged udev/group model can be evaluated later rather than weakening input permissions prematurely.
+**Current state:** the first long-running daemon and systemd service are implemented. `scrollshift configure DEVICE` persists vendor/product identity plus normalized kernel device name rather than `/dev/input/eventN`; the daemon rediscovers the current event node, waits through absence, retries after device-session failure, refuses ambiguous matches, and excludes ScrollShift virtual devices from capture. `scrollshift service enable|status|restart|start|stop|disable` wraps systemd operations, and the unit uses `Restart=on-failure`. The current permission model is deliberately a root system service; a less-privileged udev/group model can be evaluated later rather than weakening input permissions prematurely.
 
-**Current hardening:** device matching now has explicit missing/unique/ambiguous states with regression coverage. Reconnect waits are interruptible so SIGTERM remains prompt even at the maximum 30-second reconnect interval. Invalid/missing configuration exits with status 2 and the systemd unit uses `RestartPreventExitStatus=2` to avoid configuration-error restart storms. `smoothwheel doctor` validates configuration/device matching without grabbing input.
+**Current hardening:** device matching now has explicit missing/unique/ambiguous states with regression coverage. Reconnect waits are interruptible so SIGTERM remains prompt even at the maximum 30-second reconnect interval. Invalid/missing configuration exits with status 2 and the systemd unit uses `RestartPreventExitStatus=2` to avoid configuration-error restart storms. `scrollshift doctor` validates configuration/device matching without grabbing input.
 
 **Hardware evidence:** the root system service has now passed start/restart, forced `SIGKILL` recovery, receiver unplug/replug with rediscovery, and suspend/resume on the primary Linux test machine. The tuned `balanced` profile behaves the same in the daemon as in the time-bounded experiment.
 
-**Exit evidence:** Complete for the initial service model. A user can install, configure, start, stop, restart and diagnose SmoothWheel predictably; the daemon finds the configured physical device by stable identity and background recovery has real-hardware evidence. A less-privileged permission model remains a possible post-1.0 hardening improvement, not a blocker for proving the runtime architecture.
+**Exit evidence:** Complete for the initial service model. A user can install, configure, start, stop, restart and diagnose ScrollShift predictably; the daemon finds the configured physical device by stable identity and background recovery has real-hardware evidence. A less-privileged permission model remains a possible post-1.0 hardening improvement, not a blocker for proving the runtime architecture.
 
 ## Checkpoint 8 — Desktop/application compatibility matrix
 
@@ -130,7 +130,7 @@ Record behavioural differences rather than hiding them behind app-specific hacks
 
 ## Checkpoint 9 — Feel, latency and default-profile tuning
 
-**Goal:** make SmoothWheel not merely functional but noticeably pleasant.
+**Goal:** make ScrollShift not merely functional but noticeably pleasant.
 
 - timestamp physical input and virtual emission;
 - measure scheduler jitter and end-to-end added latency where possible;

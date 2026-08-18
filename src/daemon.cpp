@@ -1,14 +1,14 @@
-#include "smoothwheel/daemon.hpp"
+#include "scrollshift/daemon.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <thread>
 
-#include "smoothwheel/config.hpp"
-#include "smoothwheel/input.hpp"
-#include "smoothwheel/relay.hpp"
+#include "scrollshift/config.hpp"
+#include "scrollshift/input.hpp"
+#include "scrollshift/relay.hpp"
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 void interruptible_sleep(int milliseconds) {
   constexpr int quantum_ms = 50;
@@ -35,7 +35,7 @@ int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
   std::string error;
   const auto config = load_config(config_path, error);
   if (!config) {
-    output << "smoothwheel: configuration error: " << error << '\n';
+    output << "scrollshift: configuration error: " << error << '\n';
     return 2;
   }
 
@@ -48,14 +48,14 @@ int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
   for (const auto& match : diagnosis.matches) output << "  " << match.path << "  " << match.name << '\n';
 
   if (diagnosis.state == DeviceMatchState::Unique) {
-    output << "SmoothWheel is ready to capture this device.\n";
+    output << "ScrollShift is ready to capture this device.\n";
     return 0;
   }
   if (diagnosis.state == DeviceMatchState::Missing) {
     output << "No currently readable capture candidate matches the configured identity.\n";
     return 1;
   }
-  output << "Multiple capture candidates match; SmoothWheel will refuse to grab any of them.\n";
+  output << "Multiple capture candidates match; ScrollShift will refuse to grab any of them.\n";
   return 1;
 }
 
@@ -65,13 +65,13 @@ int run_daemon(const std::filesystem::path& config_path, std::ostream& output,
   std::string error;
   const auto config = load_config(config_path, error);
   if (!config) {
-    output << "smoothwheel: configuration error: " << error << '\n';
+    output << "scrollshift: configuration error: " << error << '\n';
     return 2;
   }
 
   install_relay_signal_handlers();
   reset_relay_stop_request();
-  output << "SmoothWheel daemon starting with profile '" << config->profile << "'.\n";
+  output << "ScrollShift daemon starting with profile '" << config->profile << "'.\n";
   output.flush();
 
   DeviceMatchState last_state = DeviceMatchState::Unique;  // force first state message
@@ -88,7 +88,7 @@ int run_daemon(const std::filesystem::path& config_path, std::ostream& output,
     }
     if (diagnosis.state == DeviceMatchState::Ambiguous) {
       if (last_state != diagnosis.state) {
-        output << "smoothwheel: configured device identity is ambiguous (" << diagnosis.matches.size()
+        output << "scrollshift: configured device identity is ambiguous (" << diagnosis.matches.size()
                << " matching event nodes); refusing to grab any of them.\n";
         output.flush();
       }
@@ -108,8 +108,8 @@ int run_daemon(const std::filesystem::path& config_path, std::ostream& output,
     interruptible_sleep(config->reconnect_ms);
   }
 
-  output << "SmoothWheel daemon stopped.\n";
+  output << "ScrollShift daemon stopped.\n";
   output.flush();
   return 0;
 }
-}  // namespace smoothwheel
+}  // namespace scrollshift

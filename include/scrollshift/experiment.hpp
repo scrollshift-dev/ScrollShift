@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace smoothwheel {
+namespace scrollshift {
 
 enum class ScrollAxis { Vertical, Horizontal };
 
@@ -50,4 +50,4 @@ int run_virtual_scroll_experiment(const ExperimentPreset& preset, ScrollAxis axi
                                   int direction, int initial_delay_seconds,
                                   const std::filesystem::path& uinput_path = "/dev/uinput");
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

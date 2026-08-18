@@ -1,16 +1,16 @@
-#include "smoothwheel/input.hpp"
+#include "scrollshift/input.hpp"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <linux/input.h>
 
-#ifndef SMOOTHWHEEL_SOURCE_DIR
-#error "SMOOTHWHEEL_SOURCE_DIR must be defined for fixture tests"
+#ifndef SCROLLSHIFT_SOURCE_DIR
+#error "SCROLLSHIFT_SOURCE_DIR must be defined for fixture tests"
 #endif
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
   RecordedEvent e{123, 456789, EV_REL, REL_WHEEL_HI_RES, -15};
   const auto line = serialize_event(e);
   const auto parsed = parse_recorded_event(line);
@@ -23,7 +23,7 @@ int main() {
   assert(!parse_recorded_event("1 2 999999 4 5"));
   assert(!parse_recorded_event("1 2 3 4 5 trailing"));
 
-  std::ifstream fixture(std::string(SMOOTHWHEEL_SOURCE_DIR) + "/tests/fixtures/nick-2.4g-wireless-mouse-vertical.trace");
+  std::ifstream fixture(std::string(SCROLLSHIFT_SOURCE_DIR) + "/tests/fixtures/nick-2.4g-wireless-mouse-vertical.trace");
   assert(fixture);
   const auto events = load_recorded_trace(fixture);
   const auto summary = summarize_trace(events);

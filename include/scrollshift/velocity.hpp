@@ -2,7 +2,7 @@
 #include <chrono>
 #include <cstdint>
 
-namespace smoothwheel {
+namespace scrollshift {
 
 struct VelocityConfig {
   double slow_interval_ms{420.0};
@@ -33,4 +33,4 @@ class VelocityEstimator {
   double filtered_{0.0};
 };
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

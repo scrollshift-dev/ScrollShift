@@ -1,11 +1,11 @@
-#include "smoothwheel/transform.hpp"
+#include "scrollshift/transform.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 std::chrono::microseconds event_time(const input_event& e) {
   return std::chrono::seconds(e.time.tv_sec) + std::chrono::microseconds(e.time.tv_usec);
@@ -120,4 +120,4 @@ std::vector<input_event> WheelPacketTransformer::transform(const std::vector<inp
   return out;
 }
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

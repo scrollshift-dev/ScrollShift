@@ -2,6 +2,6 @@
 
 #include <string_view>
 
-namespace smoothwheel {
+namespace scrollshift {
 inline constexpr std::string_view kVersion = "0.0.1-dev";
 }

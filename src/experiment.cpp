@@ -1,4 +1,4 @@
-#include "smoothwheel/experiment.hpp"
+#include "scrollshift/experiment.hpp"
 
 #include <algorithm>
 #include <cerrno>
@@ -16,7 +16,7 @@
 #include <thread>
 #include <unistd.h>
 
-namespace smoothwheel {
+namespace scrollshift {
 namespace {
 
 void checked_ioctl(int fd, unsigned long request, int value, const char* what) {
@@ -119,7 +119,7 @@ VirtualWheel::VirtualWheel(const std::filesystem::path& uinput_path) {
     setup.id.vendor = 0x5357;   // 'SW' - development-only virtual identity.
     setup.id.product = 0x0001;
     setup.id.version = 1;
-    std::strncpy(setup.name, "SmoothWheel CP2 Virtual Wheel", UINPUT_MAX_NAME_SIZE - 1);
+    std::strncpy(setup.name, "ScrollShift CP2 Virtual Wheel", UINPUT_MAX_NAME_SIZE - 1);
     checked_ioctl_ptr(fd_, UI_DEV_SETUP, &setup, "UI_DEV_SETUP");
     checked_ioctl(fd_, UI_DEV_CREATE, 0, "UI_DEV_CREATE");
     created_ = true;
@@ -164,7 +164,7 @@ int run_virtual_scroll_experiment(const ExperimentPreset& preset, ScrollAxis axi
   try {
     const auto packets = plan_scroll(preset, direction);
     VirtualWheel wheel(uinput_path);
-    std::cout << "Created temporary SmoothWheel virtual pointer.\n"
+    std::cout << "Created temporary ScrollShift virtual pointer.\n"
               << "No physical device is grabbed; your real mouse remains untouched.\n"
               << "Move the pointer over the application you want to test.\n";
     for (int remaining = initial_delay_seconds; remaining > 0; --remaining) {
@@ -178,9 +178,9 @@ int run_virtual_scroll_experiment(const ExperimentPreset& preset, ScrollAxis axi
     std::cout << "Experiment complete. Virtual device will now be removed.\n";
     return 0;
   } catch (const std::exception& error) {
-    std::cerr << "smoothwheel: experiment failed: " << error.what() << '\n';
+    std::cerr << "scrollshift: experiment failed: " << error.what() << '\n';
     return 1;
   }
 }
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

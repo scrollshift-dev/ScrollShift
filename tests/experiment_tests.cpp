@@ -1,11 +1,11 @@
-#include "smoothwheel/experiment.hpp"
+#include "scrollshift/experiment.hpp"
 
 #include <cassert>
 #include <iostream>
 #include <numeric>
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
 
   for (const auto& preset : experiment_presets()) {
     for (const int direction : {-1, 1}) {

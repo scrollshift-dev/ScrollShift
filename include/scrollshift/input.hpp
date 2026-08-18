@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace smoothwheel {
+namespace scrollshift {
 
 struct DeviceInfo {
   std::filesystem::path path;
@@ -59,4 +59,4 @@ TraceSummary summarize_trace(const std::vector<RecordedEvent>& events);
 int monitor_input_device(const std::filesystem::path& path, std::ostream& output,
                          std::ostream* record_stream, bool wheel_only);
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

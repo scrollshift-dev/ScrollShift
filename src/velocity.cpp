@@ -1,9 +1,9 @@
-#include "smoothwheel/velocity.hpp"
+#include "scrollshift/velocity.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
-namespace smoothwheel {
+namespace scrollshift {
 VelocityEstimator::VelocityEstimator(VelocityConfig config) : config_(config) {
   if (!(config_.fast_interval_ms > 0.0 && config_.slow_interval_ms > config_.fast_interval_ms &&
         config_.min_multiplier > 0.0 && config_.max_multiplier >= config_.min_multiplier &&
@@ -39,4 +39,4 @@ VelocitySample VelocityEstimator::observe(std::chrono::microseconds timestamp, i
 }
 
 void VelocityEstimator::reset() { have_previous_ = false; previous_ = {}; previous_direction_ = 0; filtered_ = 0.0; }
-}  // namespace smoothwheel
+}  // namespace scrollshift

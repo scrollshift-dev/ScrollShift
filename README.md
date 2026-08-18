@@ -1,8 +1,8 @@
-# SmoothWheel
+# ScrollShift
 
 **Intent-aware mouse-wheel scrolling for Linux.**
 
-SmoothWheel is an early-stage C++ utility that sits at the Linux input layer, keeps ordinary pointer behaviour transparent, and transforms wheel motion according to how deliberately or rapidly the wheel is moved. The current `balanced` profile is tuned for slow precision at the low end and much faster traversal under a hard spin.
+ScrollShift is an early-stage C++ utility that sits at the Linux input layer, keeps ordinary pointer behaviour transparent, and transforms wheel motion according to how deliberately or rapidly the wheel is moved. The current `balanced` profile is tuned for slow precision at the low end and much faster traversal under a hard spin.
 
 The working architecture is:
 
@@ -11,7 +11,7 @@ physical mouse
     ↓
 evdev + exclusive grab
     ↓
-SmoothWheel
+ScrollShift
     ├── pointer movement/buttons → unchanged
     └── wheel packets → velocity estimator → acceleration transform
     ↓
@@ -20,7 +20,7 @@ uinput virtual pointer
 libinput → Wayland / XWayland / X11 → applications
 ```
 
-SmoothWheel is still developmental. Real-hardware pass-through, acceleration, forced-crash recovery, receiver reconnect, and suspend/resume have been validated on the primary Linux test machine. Broader device diversity, application compatibility, and long-running resource/latency evidence remain active hardening work.
+ScrollShift is still developmental. Real-hardware pass-through, acceleration, forced-crash recovery, receiver reconnect, and suspend/resume have been validated on the primary Linux test machine. Broader device diversity, application compatibility, and long-running resource/latency evidence remain active hardening work.
 
 ## Build and test
 
@@ -32,7 +32,7 @@ make test
 Equivalent CMake commands:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSMOOTHWHEEL_WARNINGS_AS_ERRORS=ON
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON
 cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
@@ -44,20 +44,20 @@ Requires Linux, a C++20 compiler and CMake 3.20+.
 List input devices:
 
 ```bash
-sudo ./build/smoothwheel devices
+sudo ./build/scrollshift devices
 ```
 
 Run the current balanced acceleration path for 30 seconds:
 
 ```bash
-sudo ./build/smoothwheel accelerate /dev/input/eventX --profile balanced --seconds 30
+sudo ./build/scrollshift accelerate /dev/input/eventX --profile balanced --seconds 30
 ```
 
 The time-bounded development commands remain useful for diagnostics, but ordinary use should move to the service flow below.
 
 ## Install as a background service
 
-SmoothWheel installs a systemd system service because evdev capture and uinput creation require privileged input-device access in the current design.
+ScrollShift installs a systemd system service because evdev capture and uinput creation require privileged input-device access in the current design.
 
 First build and install:
 
@@ -69,26 +69,26 @@ sudo make install
 Then identify the real pointer event node and generate configuration from it:
 
 ```bash
-sudo smoothwheel devices
-sudo smoothwheel configure /dev/input/eventX
+sudo scrollshift devices
+sudo scrollshift configure /dev/input/eventX
 ```
 
 `configure` does **not** persist `/dev/input/eventX`. Event numbers are unstable across boots and reconnects. It stores the device vendor/product identity plus normalized kernel name in:
 
 ```text
-/etc/smoothwheel/config.conf
+/etc/scrollshift/config.conf
 ```
 
 The default generated profile is `balanced`. A different experimental profile can be selected during configuration:
 
 ```bash
-sudo smoothwheel configure /dev/input/eventX --profile precision
+sudo scrollshift configure /dev/input/eventX --profile precision
 ```
 
 Enable the service and start it immediately:
 
 ```bash
-sudo smoothwheel service enable
+sudo scrollshift service enable
 ```
 
 The wrapper performs a systemd daemon reload before enabling the unit.
@@ -96,21 +96,21 @@ The wrapper performs a systemd daemon reload before enabling the unit.
 Before starting the service, a non-grabbing health check can validate the configuration and current device match:
 
 ```bash
-sudo smoothwheel doctor
+sudo scrollshift doctor
 ```
 
 Day-to-day service controls are:
 
 ```bash
-smoothwheel service status
-smoothwheel service logs
-sudo smoothwheel service restart
-sudo smoothwheel service stop
-sudo smoothwheel service start
-sudo smoothwheel service disable
+scrollshift service status
+scrollshift service logs
+sudo scrollshift service restart
+sudo scrollshift service stop
+sudo scrollshift service start
+sudo scrollshift service disable
 ```
 
-The daemon rediscovers the current event node from stable identity after startup or reconnect. If no matching mouse exists it waits. If the configured identity is ambiguous it refuses to grab any device instead of guessing. SmoothWheel-created virtual devices are excluded from capture candidates to prevent reinjection loops.
+The daemon rediscovers the current event node from stable identity after startup or reconnect. If no matching mouse exists it waits. If the configured identity is ambiguous it refuses to grab any device instead of guessing. ScrollShift-created virtual devices are excluded from capture candidates to prevent reinjection loops.
 
 The systemd unit uses `Restart=on-failure`, but exit status 2 (invalid/missing configuration) is explicitly excluded from restart so a configuration mistake cannot create a restart storm. Ordinary mouse disappearance/reconnect is handled inside the daemon itself. Reconnect waits are signal-interruptible so stop/restart remains prompt even with a large `reconnect_ms`.
 
@@ -133,9 +133,9 @@ Do not hand-edit event-node numbers into configuration. `device_vendor`, `device
 These commands are non-invasive and useful when diagnosing hardware or compatibility:
 
 ```bash
-smoothwheel environment
-smoothwheel inspect /dev/input/eventX
-smoothwheel monitor /dev/input/eventX --record mouse.trace
+scrollshift environment
+scrollshift inspect /dev/input/eventX
+scrollshift monitor /dev/input/eventX --record mouse.trace
 ```
 
 `monitor` never grabs or injects input. It can record complete raw evdev traces for fixture-driven regression testing.
@@ -157,9 +157,9 @@ See [`ROADMAP.md`](ROADMAP.md) for checkpoint scope, [`HANDOVER.md`](HANDOVER.md
 Checkpoint 2's uinput feasibility probes remain available:
 
 ```bash
-./build/smoothwheel experiment --list
-./build/smoothwheel experiment fine16 --dry-run
-sudo ./build/smoothwheel experiment fine16
+./build/scrollshift experiment --list
+./build/scrollshift experiment fine16 --dry-run
+sudo ./build/scrollshift experiment fine16
 ```
 
 These are diagnostic tools, not the production motion model.

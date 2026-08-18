@@ -1,10 +1,10 @@
-#include "smoothwheel/config.hpp"
+#include "scrollshift/config.hpp"
 #include <cassert>
 #include <sstream>
 #include <iostream>
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
   std::string error;
   std::istringstream good("device_vendor = 0x3151\ndevice_product = 0x402d\ndevice_name = 2.4G Wireless Mouse\nprofile = balanced\nreconnect_ms = 750\n");
   auto config = parse_config(good, error);
@@ -22,7 +22,7 @@ int main() {
   assert(is_capture_candidate(real));
 
   DeviceInfo virtual_device = real;
-  virtual_device.vendor=0x5357; virtual_device.product=0x0003; virtual_device.name="SmoothWheel Accelerated";
+  virtual_device.vendor=0x5357; virtual_device.product=0x0003; virtual_device.name="ScrollShift Accelerated";
   assert(!is_capture_candidate(virtual_device));
 
   DeviceInfo wrong = real; wrong.name="Consumer Control";

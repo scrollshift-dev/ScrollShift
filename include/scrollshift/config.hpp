@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "smoothwheel/input.hpp"
+#include "scrollshift/input.hpp"
 
-namespace smoothwheel {
+namespace scrollshift {
 
 struct DeviceSelector {
   std::uint16_t vendor{};
@@ -43,4 +43,4 @@ int write_config_for_device(const std::filesystem::path& device,
                             const std::filesystem::path& config_path,
                             const std::string& profile, std::ostream& output);
 
-}  // namespace smoothwheel
+}  // namespace scrollshift

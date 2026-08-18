@@ -1,4 +1,4 @@
-#include "smoothwheel/transform.hpp"
+#include "scrollshift/transform.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -23,7 +23,7 @@ int value_sum(const std::vector<input_event>& p, unsigned short code) {
 }
 
 int main() {
-  using namespace smoothwheel;
+  using namespace scrollshift;
   auto* profile = find_acceleration_profile("balanced");
   assert(profile);
   assert(profile->velocity.min_multiplier == 1.0);

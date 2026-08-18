@@ -1,4 +1,4 @@
-# smoothwheel-event-trace v1
+# scrollshift-event-trace v1
 # Representative vertical-wheel packets observed on 2026-08-18.
 # Device: 2.4G Wireless Mouse 3151:402d, /dev/input/event6 during capture.
 # sec usec type code value

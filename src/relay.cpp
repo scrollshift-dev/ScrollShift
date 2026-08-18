@@ -1,5 +1,5 @@
-#include "smoothwheel/relay.hpp"
-#include "smoothwheel/transform.hpp"
+#include "scrollshift/relay.hpp"
+#include "scrollshift/transform.hpp"
 #include <array>
 #include <cerrno>
 #include <chrono>
@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <vector>
 
-namespace smoothwheel { namespace {
+namespace scrollshift { namespace {
 constexpr std::size_t kBitsPerWord = sizeof(unsigned long) * 8;
 volatile std::sig_atomic_t stop_requested = 0;
 void signal_handler(int) { stop_requested = 1; }
@@ -75,12 +75,12 @@ void write_event(int fd,const input_event& event) {
 namespace {
 int run_relay_impl(const std::filesystem::path& device,int seconds,int delay_seconds,std::ostream& out,
                    const std::filesystem::path& uinput_path,const AccelerationProfile* profile,bool manage_signals) {
-  if(seconds<0||seconds>3600||delay_seconds<0||delay_seconds>10){out<<"smoothwheel: relay duration/delay out of range\n";return 2;}
+  if(seconds<0||seconds>3600||delay_seconds<0||delay_seconds>10){out<<"scrollshift: relay duration/delay out of range\n";return 2;}
   try {
     Fd source(::open(device.c_str(),O_RDONLY|O_CLOEXEC)); if(source.get()<0) throw std::runtime_error("cannot open source: "+std::string(std::strerror(errno)));
     Fd target(::open(uinput_path.c_str(),O_WRONLY|O_NONBLOCK|O_CLOEXEC)); if(target.get()<0) throw std::runtime_error("cannot open uinput: "+std::string(std::strerror(errno)));
     clone_capabilities(source.get(),target.get());
-    uinput_setup setup{}; std::strncpy(setup.name,profile?"SmoothWheel Accelerated":"SmoothWheel Relay",UINPUT_MAX_NAME_SIZE-1); setup.id.bustype=BUS_VIRTUAL; setup.id.vendor=0x5357; setup.id.product=profile?0x0003:0x0002; setup.id.version=1;
+    uinput_setup setup{}; std::strncpy(setup.name,profile?"ScrollShift Accelerated":"ScrollShift Relay",UINPUT_MAX_NAME_SIZE-1); setup.id.bustype=BUS_VIRTUAL; setup.id.vendor=0x5357; setup.id.product=profile?0x0003:0x0002; setup.id.version=1;
     if(::ioctl(target.get(),UI_DEV_SETUP,&setup)<0) throw std::runtime_error("UI_DEV_SETUP: "+std::string(std::strerror(errno)));
     must_ioctl(target.get(),UI_DEV_CREATE,0,"UI_DEV_CREATE");
     struct Destroy { int fd; ~Destroy(){::ioctl(fd,UI_DEV_DESTROY);} } destroy{target.get()};
@@ -120,7 +120,7 @@ int run_relay_impl(const std::filesystem::path& device,int seconds,int delay_sec
       if(profile && !packet.empty()) for(const auto& e:packet) write_event(target.get(),e);
     }
     out<<"Relay stopped; physical device released.\n"; return 0;
-  } catch(const std::exception& e){out<<"smoothwheel: relay failed: "<<e.what()<<"\n";return 1;}
+  } catch(const std::exception& e){out<<"scrollshift: relay failed: "<<e.what()<<"\n";return 1;}
 }
 } // namespace
 
@@ -137,7 +137,7 @@ int run_pointer_relay(const std::filesystem::path& device,int seconds,int delay_
 
 int run_accelerated_relay(const std::filesystem::path& device,const std::string& profile_name,int seconds,int delay_seconds,std::ostream& out,const std::filesystem::path& uinput_path,bool manage_signals) {
   const auto* profile=find_acceleration_profile(profile_name);
-  if(!profile){out<<"smoothwheel: unknown acceleration profile: "<<profile_name<<"\n";return 2;}
+  if(!profile){out<<"scrollshift: unknown acceleration profile: "<<profile_name<<"\n";return 2;}
   return run_relay_impl(device,seconds,delay_seconds,out,uinput_path,profile,manage_signals);
 }
-} // namespace smoothwheel
+} // namespace scrollshift
