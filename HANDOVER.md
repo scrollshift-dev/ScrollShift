@@ -239,3 +239,7 @@ Profiles are intentionally exaggerated enough to distinguish the product directi
 - `aggressive`: maximum 10x.
 
 These are experimental tuning presets, not frozen user configuration. Real-hardware feedback first found the balanced curve pleasant but its upper ceiling too low, then found the 6x version still too fast at the slow end and too constrained at the fast end. Balanced now uses a 0.45x floor, 9x ceiling and stronger curve exponent. The packet transformer also carries a fractional legacy-wheel remainder, allowing sub-detent high-resolution output without spuriously emitting a full `REL_WHEEL` detent every packet. Same-direction rapid input increases the multiplier; reversal resets immediately and clears opposing fractional legacy carry. Momentum and post-input decay are not implemented yet.
+
+## Checkpoint packaging
+
+When handing the repository to another environment, do not include the local CMake `build/` tree. CMake caches absolute source/build paths, so copying a configured build directory can make a clean checkout fail before compilation. Use `make checkpoint` to create `../SmoothWheel-checkpoint.zip`; it preserves Git metadata while excluding build/cache artifacts.

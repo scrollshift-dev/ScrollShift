@@ -2,7 +2,7 @@ BUILD_DIR ?= build
 BUILD_TYPE ?= Debug
 JOBS ?= $(shell nproc 2>/dev/null || echo 2)
 
-.PHONY: all configure build test clean
+.PHONY: all configure build test clean checkpoint
 
 all: build
 
@@ -17,3 +17,8 @@ test: build
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+checkpoint:
+	rm -f ../SmoothWheel-checkpoint.zip
+	zip -qr ../SmoothWheel-checkpoint.zip . \
+		-x 'build/*' 'build-*/*' 'cmake-build-*/*' '.cache/*' 'dist/*' '*.swp' '*~'
