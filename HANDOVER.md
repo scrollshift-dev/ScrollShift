@@ -281,3 +281,10 @@ The primary test machine successfully exercised the installed system service thr
 ## 2026-08-18 complete wheel semantics update
 
 The packet transformer no longer assumes one wheel event of each code per `SYN_REPORT`. It aggregates same-axis events once per report, supports low-resolution-only and high-resolution-only streams, handles horizontal and vertical axes independently, and uses normalized v120 magnitude when estimating cadence. For example, 30 v120 every 10 ms is treated as the same physical rate as 120 v120 every 40 ms rather than as an artificially faster four-times-higher event frequency. This is important for genuine high-resolution/free-spin hardware.
+
+
+## 2026-08-18 property/sanitizer hardening update
+
+A fixed-seed randomized transformer test now executes 100,000 mixed packet shapes and verifies deterministic equality between independent transformer instances while asserting that all non-wheel event values, event codes/types, timestamps and packet sizes remain unchanged. The generated corpus includes low-resolution-only, high-resolution-only, paired legacy/high-resolution, horizontal, mixed-axis, burst, duplicate-event and zero-net cases.
+
+The full 12-test suite passes under AddressSanitizer + UndefinedBehaviorSanitizer with leak detection enabled. In the ordinary warnings-as-errors debug build, the 100,000-packet property test completes in roughly 0.1 seconds in the current container, which is ample throughput headroom for human input. Do not turn that number into a public performance claim without a reproducible benchmark protocol; its purpose here is to detect pathological overhead.

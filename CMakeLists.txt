@@ -51,6 +51,10 @@ if(BUILD_TESTING)
   target_link_libraries(smoothwheel_transform_tests PRIVATE smoothwheel_core)
   add_test(NAME transform_unit COMMAND smoothwheel_transform_tests)
 
+  add_executable(smoothwheel_transform_property_tests tests/transform_property_tests.cpp)
+  target_link_libraries(smoothwheel_transform_property_tests PRIVATE smoothwheel_core)
+  add_test(NAME transform_property_unit COMMAND smoothwheel_transform_property_tests)
+
   add_executable(smoothwheel_config_tests tests/config_tests.cpp)
   target_link_libraries(smoothwheel_config_tests PRIVATE smoothwheel_core)
   add_test(NAME config_unit COMMAND smoothwheel_config_tests)
