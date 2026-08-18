@@ -2,7 +2,7 @@
 
 The first development phase is risk-first. The project should prove the Linux input pipeline, safety model and application compatibility before investing in a GUI, per-application profiles or broad packaging.
 
-## Checkpoint 1 — Input reconnaissance
+## Checkpoint 1 — Input reconnaissance ✅
 
 **Goal:** understand exactly what real mice deliver before transforming anything.
 
@@ -13,7 +13,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - make device/event inspection available through a non-invasive CLI mode;
 - add fixtures so recorded traces can feed later tests without physical hardware.
 
-**Exit evidence:** SmoothWheel can identify a selected mouse and print/record its input stream without grabbing or modifying it.
+**Exit evidence:** Complete. SmoothWheel identifies and inspects wheel-capable event nodes, records complete input streams read-only, and includes a permanent fixture derived from real hardware evidence.
 
 ## Checkpoint 2 — Virtual pointer feasibility spike
 

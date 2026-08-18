@@ -13,35 +13,50 @@ struct DeviceInfo {
   std::filesystem::path path;
   std::string name;
   std::string phys;
-  std::uint16_t bus = 0;
-  std::uint16_t vendor = 0;
-  std::uint16_t product = 0;
-  std::uint16_t version = 0;
-  bool readable = false;
-  bool relative_pointer = false;
-  bool wheel = false;
-  bool horizontal_wheel = false;
-  bool hi_res_wheel = false;
-  bool hi_res_horizontal_wheel = false;
+  std::uint16_t bus{};
+  std::uint16_t vendor{};
+  std::uint16_t product{};
+  std::uint16_t version{};
+  bool readable{};
+  bool relative_pointer{};
+  bool wheel{};
+  bool horizontal_wheel{};
+  bool hi_res_wheel{};
+  bool hi_res_horizontal_wheel{};
 };
 
 struct RecordedEvent {
-  std::int64_t sec = 0;
-  std::int64_t usec = 0;
-  std::uint16_t type = 0;
-  std::uint16_t code = 0;
-  std::int32_t value = 0;
+  std::int64_t sec{};
+  std::int64_t usec{};
+  std::uint16_t type{};
+  std::uint16_t code{};
+  std::int32_t value{};
 };
 
-std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root = "/dev/input");
+struct TraceSummary {
+  std::size_t events{};
+  std::size_t reports{};
+  std::size_t vertical_low_res{};
+  std::size_t vertical_hi_res{};
+  std::size_t horizontal_low_res{};
+  std::size_t horizontal_hi_res{};
+  std::int64_t vertical_low_res_total{};
+  std::int64_t vertical_hi_res_total{};
+  std::int64_t horizontal_low_res_total{};
+  std::int64_t horizontal_hi_res_total{};
+};
+
 std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path);
+std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root = "/dev/input");
+std::string describe_device(const DeviceInfo& device);
 std::string event_type_name(std::uint16_t type);
 std::string event_code_name(std::uint16_t type, std::uint16_t code);
-std::string describe_device(const DeviceInfo& device);
 std::string format_event(const RecordedEvent& event);
 std::string serialize_event(const RecordedEvent& event);
 std::optional<RecordedEvent> parse_recorded_event(const std::string& line);
-int monitor_input_device(const std::filesystem::path& path, std::ostream& out,
-                         std::ostream* record, bool wheel_only);
+std::vector<RecordedEvent> load_recorded_trace(std::istream& input);
+TraceSummary summarize_trace(const std::vector<RecordedEvent>& events);
+int monitor_input_device(const std::filesystem::path& path, std::ostream& output,
+                         std::ostream* record_stream, bool wheel_only);
 
 }  // namespace smoothwheel

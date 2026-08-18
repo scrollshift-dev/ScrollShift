@@ -2,7 +2,7 @@
 
 ## Canonical state
 
-This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. Checkpoint 1 read-only input reconnaissance is implemented and awaiting capture from a real mouse. The CLI can enumerate readable evdev devices, inspect wheel capabilities, monitor events, and record complete event traces. **No exclusive input grab, uinput device creation or smoothing is implemented yet.**
+This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. Checkpoint 1 read-only input reconnaissance is complete. The CLI can enumerate readable evdev devices, inspect wheel capabilities, monitor events, and record complete event traces. Real hardware evidence from a 2.4G Wireless Mouse (3151:402d) is preserved in `tests/fixtures/nick-2.4g-wireless-mouse-vertical.trace`. **No exclusive input grab or smoothing is implemented yet. Checkpoint 2 is the current frontier: a non-grabbing uinput feasibility experiment.**
 
 The paired website repository is `SmoothWheel/SmoothWheel.github.io`. It is built with Nift and intentionally presents SmoothWheel as early development until the feasibility and safety checkpoints are complete.
 
@@ -43,6 +43,12 @@ Relevant primary references:
 - libevdev API: https://www.freedesktop.org/software/libevdev/doc/latest/
 - libinput wheel API: https://wayland.freedesktop.org/libinput/doc/latest/wheel-api.html
 - Wayland architecture: https://wayland.freedesktop.org/architecture.html
+
+## Checkpoint 1 hardware evidence
+
+On 2026-08-18 a real 2.4G Wireless Mouse (USB ID `3151:402d`) was inspected on Linux. Its pointer event node exposed vertical and horizontal low-resolution and high-resolution wheel capabilities. Observed vertical wheel packets consistently emitted `REL_WHEEL +/-1` and `REL_WHEEL_HI_RES +/-120` together, followed by `SYN_REPORT`; fast scrolling altered event timing rather than the per-detent magnitude. A representative subset is committed as a permanent fixture.
+
+The same USB receiver also exposes a separate Consumer Control event node with horizontal-wheel capabilities but no relative pointer axes. This is evidence that capability presence alone is insufficient for future automatic device selection: physical-device grouping and pointer classification must be considered before exclusive capture.
 
 ## Most important unresolved question
 

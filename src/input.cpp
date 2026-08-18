@@ -123,6 +123,45 @@ std::optional<RecordedEvent> parse_recorded_event(const std::string& line) {
   e.sec = sec; e.usec = usec; e.type = static_cast<std::uint16_t>(type); e.code = static_cast<std::uint16_t>(code); e.value = static_cast<std::int32_t>(value); return e;
 }
 
+std::vector<RecordedEvent> load_recorded_trace(std::istream& input) {
+  std::vector<RecordedEvent> events;
+  std::string line;
+  while (std::getline(input, line)) {
+    if (auto event = parse_recorded_event(line)) events.push_back(*event);
+  }
+  return events;
+}
+
+TraceSummary summarize_trace(const std::vector<RecordedEvent>& events) {
+  TraceSummary summary;
+  summary.events = events.size();
+  for (const auto& event : events) {
+    if (event.type == EV_SYN && event.code == SYN_REPORT) ++summary.reports;
+    if (event.type != EV_REL) continue;
+    switch (event.code) {
+      case REL_WHEEL:
+        ++summary.vertical_low_res;
+        summary.vertical_low_res_total += event.value;
+        break;
+      case REL_WHEEL_HI_RES:
+        ++summary.vertical_hi_res;
+        summary.vertical_hi_res_total += event.value;
+        break;
+      case REL_HWHEEL:
+        ++summary.horizontal_low_res;
+        summary.horizontal_low_res_total += event.value;
+        break;
+      case REL_HWHEEL_HI_RES:
+        ++summary.horizontal_hi_res;
+        summary.horizontal_hi_res_total += event.value;
+        break;
+      default:
+        break;
+    }
+  }
+  return summary;
+}
+
 int monitor_input_device(const std::filesystem::path& path, std::ostream& out, std::ostream* record, bool wheel_only) {
   const int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) { out << "smoothwheel: cannot open " << path << ": " << std::strerror(errno) << '\n'; return 1; }
