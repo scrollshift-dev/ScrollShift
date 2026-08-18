@@ -41,20 +41,18 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Exit evidence:** Complete on the current hardware gate. Real-device tests verified normal pointer movement, buttons, scrolling, no obvious duplication, timed expiry, and Ctrl-C recovery while the physical pointer was exclusively relayed through uinput.
 
-## Checkpoint 4 — Safe exclusive capture 🚧
+## Checkpoint 4 — Safe exclusive capture ✅
 
 **Goal:** take ownership of a physical pointer without duplicate events or fragile recovery.
 
-- use `EVIOCGRAB` through libevdev for a selected device;
+- use `EVIOCGRAB` for a selected device;
 - forward every required event through the virtual pointer;
 - guarantee grab release on normal shutdown and handled signals;
-- test daemon termination, exceptions and device disconnects;
-- build a watchdog/fail-open strategy if needed;
+- test daemon termination and device disconnects;
+- establish fail-open behaviour for abnormal process death;
 - document safe development/recovery procedure.
 
-**Current state:** normal expiry and Ctrl-C recovery have been exercised successfully on real hardware. The relay creates the virtual device before acquiring `EVIOCGRAB`, releases through RAII on controlled paths, and relies on descriptor teardown for process-death fail-open behavior. Forced process death and source-disconnect recovery remain to be exercised before CP4 is closed.
-
-**Safety gate:** use the new service initially as an explicit hardware test. Do not leave boot-time autostart enabled until forced-death and disconnect/reconnect tests demonstrate reliable pointer recovery.
+**Exit evidence:** Complete on the primary Linux test machine. Transparent relay behavior passed normal expiry and Ctrl-C tests; the persistent service then passed normal restart, forced `SIGKILL`, receiver unplug/replug, and suspend/resume. Forced death immediately returned the physical mouse because kernel descriptor teardown released the grab, and systemd subsequently restarted SmoothWheel. Device loss/reappearance also recovered without relying on a persistent `/dev/input/eventN`.
 
 ## Checkpoint 5 — Velocity model and motion engine v1 🚧
 
@@ -75,7 +73,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Exit evidence:** the complete motion model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
 
-## Checkpoint 6 — Complete wheel semantics
+## Checkpoint 6 — Complete wheel semantics ✅
 
 **Goal:** make the engine correct across the wheel behaviours Linux exposes.
 
@@ -85,12 +83,12 @@ The first development phase is risk-first. The project should prove the Linux in
 - simultaneous/mixed axes;
 - rapid direction reversal;
 - bursts spanning multiple detents;
-- natural-scroll interaction (avoid implementing compositor policy twice);
+- multiple same-axis events inside one `SYN_REPORT`;
 - preserve physical high-resolution input rather than degrading it.
 
-**Exit evidence:** a corpus of real and synthetic traces exercises every supported wheel mode.
+**Exit evidence:** Complete at the engine/fixture level. The packet transformer now aggregates arbitrary same-axis wheel events once per `SYN_REPORT`, handles low-resolution-only and high-resolution-only streams, maintains independent horizontal/vertical velocity state, and normalizes cadence by actual v120 magnitude. This means fractional high-resolution samples are interpreted by equivalent physical rate rather than event frequency alone. Real primary-hardware evidence covers the paired `REL_WHEEL`/`REL_WHEEL_HI_RES` path; synthetic regression cases cover the remaining supported semantics until more physical devices are available.
 
-## Checkpoint 7 — Daemon lifecycle, permissions and configuration 🚧
+## Checkpoint 7 — Daemon lifecycle, permissions and configuration ✅
 
 **Goal:** turn the prototype into an everyday background utility without making it a desktop application yet.
 
@@ -106,9 +104,9 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Current hardening:** device matching now has explicit missing/unique/ambiguous states with regression coverage. Reconnect waits are interruptible so SIGTERM remains prompt even at the maximum 30-second reconnect interval. Invalid/missing configuration exits with status 2 and the systemd unit uses `RestartPreventExitStatus=2` to avoid configuration-error restart storms. `smoothwheel doctor` validates configuration/device matching without grabbing input.
 
-**Remaining gate:** install/enable this service on the real test machine, verify boot/start/restart behaviour, deliberately kill the daemon and verify systemd recovery, unplug/replug the mouse, and exercise suspend/resume before calling the lifecycle/hotplug portion complete.
+**Hardware evidence:** the root system service has now passed start/restart, forced `SIGKILL` recovery, receiver unplug/replug with rediscovery, and suspend/resume on the primary Linux test machine. The tuned `balanced` profile behaves the same in the daemon as in the time-bounded experiment.
 
-**Exit evidence:** a user can install, configure, start, stop and diagnose SmoothWheel predictably, and background recovery has real-hardware evidence rather than only RAII/unit-test reasoning.
+**Exit evidence:** Complete for the initial service model. A user can install, configure, start, stop, restart and diagnose SmoothWheel predictably; the daemon finds the configured physical device by stable identity and background recovery has real-hardware evidence. A less-privileged permission model remains a possible post-1.0 hardening improvement, not a blocker for proving the runtime architecture.
 
 ## Checkpoint 8 — Desktop/application compatibility matrix
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 
 namespace smoothwheel {
 namespace {
@@ -23,6 +24,34 @@ int consume_legacy(double contribution, double& remainder) {
   const int whole = total < 0.0 ? static_cast<int>(std::ceil(total)) : static_cast<int>(std::floor(total));
   remainder = total - static_cast<double>(whole);
   return whole;
+}
+struct AxisPacket {
+  int hi_sum{0};
+  int lo_sum{0};
+  std::size_t hi_first{static_cast<std::size_t>(-1)};
+  std::size_t lo_first{static_cast<std::size_t>(-1)};
+  std::chrono::microseconds timestamp{};
+  bool have_timestamp{false};
+};
+void collect_axis(const std::vector<input_event>& packet, std::uint16_t hi_code, std::uint16_t lo_code,
+                  AxisPacket& axis) {
+  for (std::size_t i = 0; i < packet.size(); ++i) {
+    const auto& e = packet[i];
+    if (e.type != EV_REL || e.value == 0) continue;
+    if (e.code == hi_code) {
+      axis.hi_sum += e.value;
+      if (axis.hi_first == static_cast<std::size_t>(-1)) axis.hi_first = i;
+      axis.timestamp = event_time(e);
+      axis.have_timestamp = true;
+    } else if (e.code == lo_code) {
+      axis.lo_sum += e.value;
+      if (axis.lo_first == static_cast<std::size_t>(-1)) axis.lo_first = i;
+      if (!axis.have_timestamp) {
+        axis.timestamp = event_time(e);
+        axis.have_timestamp = true;
+      }
+    }
+  }
 }
 }
 
@@ -53,39 +82,41 @@ void WheelPacketTransformer::reset() {
 
 std::vector<input_event> WheelPacketTransformer::transform(const std::vector<input_event>& packet) {
   auto out = packet;
-  const input_event* vhi = nullptr;
-  const input_event* vlo = nullptr;
-  const input_event* hhi = nullptr;
-  const input_event* hlo = nullptr;
-  for (const auto& e : packet) {
-    if (e.type != EV_REL || e.value == 0) continue;
-    if (e.code == REL_WHEEL_HI_RES) vhi = &e;
-    else if (e.code == REL_WHEEL) vlo = &e;
-    else if (e.code == REL_HWHEEL_HI_RES) hhi = &e;
-    else if (e.code == REL_HWHEEL) hlo = &e;
-  }
+  AxisPacket vertical;
+  AxisPacket horizontal;
+  collect_axis(packet, REL_WHEEL_HI_RES, REL_WHEEL, vertical);
+  collect_axis(packet, REL_HWHEEL_HI_RES, REL_HWHEEL, horizontal);
 
-  auto apply_axis = [&](const input_event* hi, const input_event* lo, VelocityEstimator& estimator,
-                        double& legacy_remainder, std::uint16_t hi_code, std::uint16_t lo_code) {
-    const input_event* source = hi ? hi : lo;
-    if (!source) return;
-    const auto sample = estimator.observe(event_time(*source), sign_of(source->value));
+  auto apply_axis = [&](const AxisPacket& axis, VelocityEstimator& estimator, double& legacy_remainder,
+                        std::uint16_t hi_code, std::uint16_t lo_code) {
+    const int source_value = axis.hi_sum != 0 ? axis.hi_sum : axis.lo_sum;
+    if (!axis.have_timestamp || source_value == 0) return;
+    const int normalized_v120 = axis.hi_sum != 0 ? std::abs(axis.hi_sum) : std::abs(axis.lo_sum) * 120;
+    const auto sample = estimator.observe(axis.timestamp, sign_of(source_value), normalized_v120);
 
-    int transformed_hi = 0;
-    if (hi) transformed_hi = scaled_hi_res(hi->value, sample.multiplier);
-    const double legacy_contribution = hi ? static_cast<double>(transformed_hi) / 120.0
-                                          : static_cast<double>(lo->value) * sample.multiplier;
-    const int transformed_lo = lo ? consume_legacy(legacy_contribution, legacy_remainder) : 0;
+    const int transformed_hi = axis.hi_sum != 0 ? scaled_hi_res(axis.hi_sum, sample.multiplier) : 0;
+    const double legacy_contribution = axis.hi_sum != 0
+                                           ? static_cast<double>(transformed_hi) / 120.0
+                                           : static_cast<double>(axis.lo_sum) * sample.multiplier;
+    const int transformed_lo = axis.lo_sum != 0 ? consume_legacy(legacy_contribution, legacy_remainder) : 0;
 
+    bool wrote_hi = false;
+    bool wrote_lo = false;
     for (auto& e : out) {
       if (e.type != EV_REL) continue;
-      if (hi && e.code == hi_code && e.value != 0) e.value = transformed_hi;
-      if (lo && e.code == lo_code && e.value != 0) e.value = transformed_lo;
+      if (e.code == hi_code && e.value != 0) {
+        e.value = wrote_hi ? 0 : transformed_hi;
+        wrote_hi = true;
+      }
+      if (e.code == lo_code && e.value != 0) {
+        e.value = wrote_lo ? 0 : transformed_lo;
+        wrote_lo = true;
+      }
     }
   };
 
-  apply_axis(vhi, vlo, vertical_, vertical_legacy_remainder_, REL_WHEEL_HI_RES, REL_WHEEL);
-  apply_axis(hhi, hlo, horizontal_, horizontal_legacy_remainder_, REL_HWHEEL_HI_RES, REL_HWHEEL);
+  apply_axis(vertical, vertical_, vertical_legacy_remainder_, REL_WHEEL_HI_RES, REL_WHEEL);
+  apply_axis(horizontal, horizontal_, horizontal_legacy_remainder_, REL_HWHEEL_HI_RES, REL_HWHEEL);
   return out;
 }
 

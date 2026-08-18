@@ -23,7 +23,7 @@ struct VelocitySample {
 class VelocityEstimator {
  public:
   explicit VelocityEstimator(VelocityConfig config = {});
-  VelocitySample observe(std::chrono::microseconds timestamp, int direction);
+  VelocitySample observe(std::chrono::microseconds timestamp, int direction, int normalized_v120 = 120);
   void reset();
  private:
   VelocityConfig config_;

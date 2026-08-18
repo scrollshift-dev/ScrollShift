@@ -41,5 +41,22 @@ int main() {
   for (int i = 1; i <= 18; ++i) hard = shaped.observe(700ms + std::chrono::milliseconds(i * 35), 1);
   assert(hard.multiplier > 8.5 && hard.multiplier <= 9.0);
 
+
+  // High-resolution samples are normalized by their v120 magnitude. Thirty
+  // units every 10 ms represents the same physical rate as 120 every 40 ms.
+  VelocityEstimator hires(cfg);
+  hires.observe(0us, 1, 30);
+  VelocitySample hires_fast{};
+  for (int i = 1; i <= 16; ++i)
+    hires_fast = hires.observe(std::chrono::milliseconds(i * 10), 1, 30);
+  assert(hires_fast.interval_ms == 40.0);
+  assert(hires_fast.multiplier > 8.0);
+
+  VelocityEstimator hires_slow(cfg);
+  hires_slow.observe(0us, 1, 30);
+  auto hires_precision = hires_slow.observe(100ms, 1, 30);
+  assert(hires_precision.interval_ms == 400.0);
+  assert(hires_precision.multiplier < 0.7);
+
   std::cout << "velocity tests passed\n";
 }

@@ -215,7 +215,9 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Dogfood the newly implemented systemd daemon on the real Linux test machine. Configure it from the known physical mouse event node, enable it, and verify normal background scrolling first. Then test service restart, forced `SIGKILL` recovery, mouse unplug/replug with event-node rediscovery, and suspend/resume. Preserve any observed failure as a deterministic regression or lifecycle test where possible. Do not call CP4 or CP7 complete until these service-level recovery paths have hardware evidence.
+CP4 and the initial CP7 service lifecycle are now closed with real-hardware evidence: normal restart, forced `SIGKILL`, receiver unplug/replug, and suspend/resume all recovered correctly on the primary Linux test machine. CP6 is also closed at the engine/fixture level with low-resolution, high-resolution/free-spin, burst, duplicate-event, mixed-axis and reversal regression coverage.
+
+The next frontier is CP8/CP9/CP10: build a representative desktop/application compatibility matrix, measure long-running resource/latency behavior, and continue failure/sanitizer/property hardening. Keep the restored original `balanced` profile frozen unless sustained dogfooding reveals a concrete defect; do not resume speculative curve tuning simply because more parameters are available.
 
 ## Product-direction update after CP2
 
@@ -269,4 +271,13 @@ The daemon/service layer now has deterministic regression coverage for device-ma
 
 `smoothwheel doctor` is a read-only/non-grabbing diagnostic that validates config and reports whether the configured stable identity is currently missing, uniquely ready, or ambiguous. `smoothwheel service logs` provides a compact journal view for dogfooding diagnostics.
 
-These changes reduce the next hardware gate to behavior that cannot be established in a container: actual systemd installation on the target machine, SIGKILL while owning the physical mouse, receiver unplug/replug, and suspend/resume.
+Those lifecycle changes were subsequently exercised on real hardware; see the hardware lifecycle closure below.
+
+
+## 2026-08-18 hardware lifecycle closure
+
+The primary test machine successfully exercised the installed system service through normal start/restart, forced `SIGKILL`, physical receiver unplug/replug, and suspend/resume. All paths recovered without manual mouse repair, and stable identity rediscovery survived device disappearance. Treat this as the evidence closing CP4 and the initial CP7 lifecycle/hotplug gate.
+
+## 2026-08-18 complete wheel semantics update
+
+The packet transformer no longer assumes one wheel event of each code per `SYN_REPORT`. It aggregates same-axis events once per report, supports low-resolution-only and high-resolution-only streams, handles horizontal and vertical axes independently, and uses normalized v120 magnitude when estimating cadence. For example, 30 v120 every 10 ms is treated as the same physical rate as 120 v120 every 40 ms rather than as an artificially faster four-times-higher event frequency. This is important for genuine high-resolution/free-spin hardware.
