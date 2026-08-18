@@ -4,6 +4,7 @@
 #include <array>
 #include <cerrno>
 #include <cstring>
+#include <cctype>
 #include <fcntl.h>
 #include <iomanip>
 #include <linux/input.h>
@@ -27,6 +28,13 @@ std::string ioctl_string(int fd, unsigned long request, std::size_t size) {
   return std::string(buffer.data());
 }
 
+std::string trim_device_name(std::string value) {
+  const auto first = std::find_if_not(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c) != 0; });
+  const auto last = std::find_if_not(value.rbegin(), value.rend(), [](unsigned char c) { return std::isspace(c) != 0; }).base();
+  if (first >= last) return {};
+  return std::string(first, last);
+}
+
 bool wheel_code(std::uint16_t code) {
   return code == REL_WHEEL || code == REL_HWHEEL || code == REL_WHEEL_HI_RES ||
          code == REL_HWHEEL_HI_RES;
@@ -40,7 +48,7 @@ std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path
   DeviceInfo d;
   d.path = path;
   d.readable = true;
-  d.name = ioctl_string(fd, EVIOCGNAME(256), 256);
+  d.name = trim_device_name(ioctl_string(fd, EVIOCGNAME(256), 256));
   d.phys = ioctl_string(fd, EVIOCGPHYS(256), 256);
 
   input_id id{};

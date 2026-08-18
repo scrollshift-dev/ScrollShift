@@ -1,0 +1,14 @@
+[Unit]
+Description=SmoothWheel intent-aware mouse wheel acceleration
+Documentation=https://smoothwheel.github.io/docs/
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/smoothwheel daemon --config /etc/smoothwheel/config.conf
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=multi-user.target

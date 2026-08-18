@@ -1,0 +1,9 @@
+# Generate the real configuration from your mouse with:
+#   sudo smoothwheel configure /dev/input/eventN
+#
+# The daemon persists stable device identity, never eventN.
+device_vendor = 0x0000
+device_product = 0x0000
+device_name = replace-me
+profile = balanced
+reconnect_ms = 1000

@@ -1,8 +1,12 @@
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <unistd.h>
 
+#include "smoothwheel/config.hpp"
+#include "smoothwheel/daemon.hpp"
 #include "smoothwheel/experiment.hpp"
 #include "smoothwheel/input.hpp"
 #include "smoothwheel/relay.hpp"
@@ -16,6 +20,9 @@ void print_help() {
       << "Native smooth mouse-wheel scrolling for Linux.\n\n"
       << "Usage:\n"
       << "  smoothwheel devices\n"
+      << "  smoothwheel configure DEVICE [--profile NAME] [--config FILE]\n"
+      << "  smoothwheel daemon [--config FILE]\n"
+      << "  smoothwheel service status|restart|start|stop|enable|disable\n"
       << "  smoothwheel inspect DEVICE\n"
       << "  smoothwheel monitor DEVICE [--all] [--record FILE]\n"
       << "  smoothwheel relay DEVICE [--seconds N]\n"
@@ -30,8 +37,8 @@ void print_help() {
       << "shows every event while --record saves the complete raw event stream.\n\n"
       << "Checkpoint 2 experiment commands create only a temporary uinput device.\n"
       << "They do not grab or modify a physical input device.\n\n"
-      << "The relay command is an experimental Checkpoint 3/4 safety test. It\n"
-      << "temporarily grabs the selected pointer and mirrors it through uinput.\n";
+      << "The installed daemon uses stable device identity from /etc/smoothwheel/config.conf\n"
+      << "and rediscovers the current event node after boot or reconnect.\n";
 }
 
 int devices() {
@@ -47,6 +54,28 @@ int devices() {
   }
   return 0;
 }
+
+int service_command(std::string_view action) {
+  const char* verb = nullptr;
+  const char* extra = nullptr;
+  if (action == "status") verb = "status";
+  else if (action == "restart") verb = "restart";
+  else if (action == "start") verb = "start";
+  else if (action == "stop") verb = "stop";
+  else if (action == "enable") {
+    if (std::system("systemctl daemon-reload") != 0) {
+      std::cerr << "smoothwheel: systemctl daemon-reload failed\n";
+      return 1;
+    }
+    verb = "enable"; extra = "--now";
+  }
+  else if (action == "disable") { verb = "disable"; extra = "--now"; }
+  else { std::cerr << "smoothwheel: service action must be status, restart, start, stop, enable, or disable\n"; return 2; }
+  if (extra) ::execlp("systemctl", "systemctl", verb, extra, "smoothwheel.service", static_cast<char*>(nullptr));
+  else ::execlp("systemctl", "systemctl", verb, "smoothwheel.service", static_cast<char*>(nullptr));
+  std::cerr << "smoothwheel: failed to execute systemctl\n";
+  return 1;
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -55,6 +84,27 @@ int main(int argc, char** argv) {
   if (arg == "--help" || arg == "-h") { print_help(); return 0; }
   if (arg == "--version" || arg == "-V") { std::cout << "smoothwheel " << smoothwheel::kVersion << '\n'; return 0; }
   if (arg == "devices" && argc == 2) return devices();
+  if (arg == "configure" && argc >= 3) {
+    std::string profile = "balanced";
+    std::filesystem::path config_path = "/etc/smoothwheel/config.conf";
+    for (int i = 3; i < argc; ++i) {
+      const std::string_view opt{argv[i]};
+      if (opt == "--profile" && i + 1 < argc) profile = argv[++i];
+      else if (opt == "--config" && i + 1 < argc) config_path = argv[++i];
+      else { std::cerr << "smoothwheel: invalid configure option: " << opt << '\n'; return 2; }
+    }
+    return smoothwheel::write_config_for_device(argv[2], config_path, profile, std::cout);
+  }
+  if (arg == "daemon") {
+    std::filesystem::path config_path = "/etc/smoothwheel/config.conf";
+    for (int i = 2; i < argc; ++i) {
+      const std::string_view opt{argv[i]};
+      if (opt == "--config" && i + 1 < argc) config_path = argv[++i];
+      else { std::cerr << "smoothwheel: invalid daemon option: " << opt << '\n'; return 2; }
+    }
+    return smoothwheel::run_daemon(config_path, std::cout);
+  }
+  if (arg == "service" && argc == 3) return service_command(argv[2]);
   if (arg == "inspect" && argc == 3) {
     auto d = smoothwheel::inspect_input_device(argv[2]);
     if (!d) { std::cerr << "smoothwheel: cannot inspect " << argv[2] << "\n"; return 1; }
