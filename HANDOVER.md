@@ -213,7 +213,7 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Exercise the new packet-level acceleration relay on the same real mouse. Start with `balanced`, compare slow single detents against deliberate fast spins, then compare `precision`, `fast`, and `aggressive`. The expected distinction should be obvious in traversal speed, not subtle visual smoothness. If acceleration is useful, keep cadence mapping as the core and only then add bounded momentum/decay. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
+Re-test the revised `balanced` profile on the same real mouse. Its low/medium response is intentionally kept near the previously-liked shape while its hard-spin ceiling is raised from 4x to 6x. Compare ordinary slow scrolling and deliberate fast spins; only if the upper-end still feels constrained should the ceiling move again. Also compare `fast` as a reference. The expected distinction should be obvious in traversal speed, not subtle visual smoothness. If acceleration is useful, keep cadence mapping as the core and only then add bounded momentum/decay. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
 
 ## Product-direction update after CP2
 
@@ -234,8 +234,8 @@ CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling,
 Profiles are intentionally exaggerated enough to distinguish the product direction:
 
 - `precision`: maximum 2x;
-- `balanced`: maximum 4x;
+- `balanced`: maximum 6x, with a shaped upper-end curve so low/moderate input stays close to the original balanced feel;
 - `fast`: maximum 7x;
 - `aggressive`: maximum 10x.
 
-These are experimental tuning presets, not frozen user configuration. Slow/isolated detents remain at 1x; same-direction rapid input increases the multiplier; reversal resets immediately. Momentum and post-input decay are not implemented yet.
+These are experimental tuning presets, not frozen user configuration. Real-hardware feedback found the original balanced curve pleasant but its 4x ceiling too low, so balanced now uses a 6x ceiling plus a curve exponent to bias the extra gain toward hard spins rather than making the entire response more aggressive. Slow/isolated detents remain at 1x; same-direction rapid input increases the multiplier; reversal resets immediately. Momentum and post-input decay are not implemented yet.

@@ -6,7 +6,8 @@
 namespace smoothwheel {
 VelocityEstimator::VelocityEstimator(VelocityConfig config) : config_(config) {
   if (!(config_.fast_interval_ms > 0.0 && config_.slow_interval_ms > config_.fast_interval_ms &&
-        config_.max_multiplier >= 1.0 && config_.smoothing > 0.0 && config_.smoothing <= 1.0))
+        config_.max_multiplier >= 1.0 && config_.smoothing > 0.0 && config_.smoothing <= 1.0 &&
+        config_.curve_power > 0.0))
     throw std::invalid_argument("invalid velocity configuration");
 }
 
@@ -22,7 +23,8 @@ VelocitySample VelocityEstimator::observe(std::chrono::microseconds timestamp, i
     out.instantaneous = std::clamp((config_.slow_interval_ms - out.interval_ms) / span, 0.0, 1.0);
     filtered_ += config_.smoothing * (out.instantaneous - filtered_);
     out.filtered = filtered_;
-    out.multiplier = 1.0 + filtered_ * (config_.max_multiplier - 1.0);
+    const double shaped = std::pow(filtered_, config_.curve_power);
+    out.multiplier = 1.0 + shaped * (config_.max_multiplier - 1.0);
   }
   previous_ = timestamp;
   previous_direction_ = direction;

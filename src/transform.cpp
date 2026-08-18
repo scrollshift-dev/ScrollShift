@@ -19,10 +19,10 @@ int scaled(int value, double multiplier) {
 
 std::vector<AccelerationProfile> acceleration_profiles() {
   return {
-      {"precision", "Gentle acceleration with a low ceiling", {420.0, 55.0, 2.0, 0.30}},
-      {"balanced", "Clear slow/fast separation without extreme travel", {420.0, 45.0, 4.0, 0.38}},
-      {"fast", "Strong acceleration for rapid traversal", {460.0, 40.0, 7.0, 0.45}},
-      {"aggressive", "Very strong acceleration for hard wheel spins", {500.0, 35.0, 10.0, 0.55}},
+      {"precision", "Gentle acceleration with a low ceiling", {420.0, 55.0, 2.0, 0.30, 1.0}},
+      {"balanced", "Balanced low-speed control with a higher hard-spin ceiling", {420.0, 45.0, 6.0, 0.38, 1.45}},
+      {"fast", "Strong acceleration for rapid traversal", {460.0, 40.0, 7.0, 0.45, 1.0}},
+      {"aggressive", "Very strong acceleration for hard wheel spins", {500.0, 35.0, 10.0, 0.55, 1.0}},
   };
 }
 

@@ -71,7 +71,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - handle reversal without long unwanted tails;
 - unit-test timing, conservation, cancellation and determinism using a fake clock.
 
-**Current state:** the pure cadence estimator and a packet-level wheel transformer are implemented and deterministic. The transformer keeps non-wheel events untouched, treats each `SYN_REPORT` packet as the transformation unit, scales paired legacy/high-resolution wheel representations coherently, and exposes deliberately distinct `precision`, `balanced`, `fast`, and `aggressive` profiles. The first real-hardware acceleration tuning gate is next; momentum/decay is intentionally deferred until cadence-based acceleration is judged useful.
+**Current state:** the pure cadence estimator and a packet-level wheel transformer are implemented and deterministic. The transformer keeps non-wheel events untouched, treats each `SYN_REPORT` packet as the transformation unit, scales paired legacy/high-resolution wheel representations coherently, and exposes deliberately distinct `precision`, `balanced`, `fast`, and `aggressive` profiles. The first real-hardware acceleration tuning gate found the balanced shape pleasant but the 4x ceiling too low; balanced now uses a shaped 6x upper end while preserving gentler low-speed response; momentum/decay is intentionally deferred until cadence-based acceleration is judged useful.
 
 **Exit evidence:** the complete motion model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
 

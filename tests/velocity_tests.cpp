@@ -16,5 +16,16 @@ int main() {
   auto reversed=v.observe(300ms,-1); assert(reversed.multiplier == 1.0);
   auto after_reverse=v.observe(335ms,-1); assert(after_reverse.multiplier > 1.0);
   auto nonmonotonic=v.observe(100ms,-1); assert(nonmonotonic.multiplier == 1.0);
+
+  VelocityConfig shaped_cfg{420.0, 45.0, 6.0, 0.38, 1.45};
+  VelocityEstimator shaped(shaped_cfg);
+  shaped.observe(0us, 1);
+  auto moderate = shaped.observe(300ms, 1);
+  assert(moderate.multiplier > 1.1 && moderate.multiplier < 1.4);
+  auto mid = shaped.observe(520ms, 1);
+  assert(mid.multiplier > 1.5 && mid.multiplier < 2.1);
+  VelocitySample hard{};
+  for (int i = 1; i <= 12; ++i) hard = shaped.observe(520ms + std::chrono::milliseconds(i * 45), 1);
+  assert(hard.multiplier > 5.8 && hard.multiplier <= 6.0);
   std::cout << "velocity tests passed\n";
 }
