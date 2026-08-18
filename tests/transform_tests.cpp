@@ -15,7 +15,7 @@ int main() {
   auto* profile=find_acceleration_profile("balanced"); assert(profile);
   assert(profile->velocity.min_multiplier == 0.45);
   assert(profile->velocity.max_multiplier == 9.0);
-  assert(profile->velocity.curve_power > 2.0);
+  assert(profile->velocity.curve_power >= 3.0);
 
   WheelPacketTransformer t(profile->velocity);
   auto p=t.transform({ev(1,0,EV_REL,REL_WHEEL,1),ev(1,0,EV_REL,REL_WHEEL_HI_RES,120),ev(1,0,EV_SYN,SYN_REPORT,0)});
@@ -30,7 +30,7 @@ int main() {
 
   t.reset();
   p=t.transform({ev(3,0,EV_REL,REL_WHEEL,1),ev(3,0,EV_REL,REL_WHEEL_HI_RES,120),ev(3,0,EV_SYN,SYN_REPORT,0)});
-  for (int i=1;i<=12;++i)
+  for (int i=1;i<=18;++i)
     p=t.transform({ev(3,i*35000,EV_REL,REL_WHEEL,1),ev(3,i*35000,EV_REL,REL_WHEEL_HI_RES,120),ev(3,i*35000,EV_SYN,SYN_REPORT,0)});
   assert(value_of(p,REL_WHEEL)>=8);
   assert(value_of(p,REL_WHEEL_HI_RES)>1000);
