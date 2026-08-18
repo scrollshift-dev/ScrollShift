@@ -5,6 +5,7 @@
 
 #include "smoothwheel/experiment.hpp"
 #include "smoothwheel/input.hpp"
+#include "smoothwheel/relay.hpp"
 #include "smoothwheel/version.hpp"
 
 namespace {
@@ -16,6 +17,7 @@ void print_help() {
       << "  smoothwheel devices\n"
       << "  smoothwheel inspect DEVICE\n"
       << "  smoothwheel monitor DEVICE [--all] [--record FILE]\n"
+      << "  smoothwheel relay DEVICE [--seconds N]\n"
       << "  smoothwheel experiment --list\n"
       << "  smoothwheel experiment PRESET [--axis vertical|horizontal] [--direction +/-1] [--delay SECONDS] [--dry-run]\n"
       << "  smoothwheel --help\n"
@@ -24,7 +26,9 @@ void print_help() {
       << "never inject input. 'monitor' prints wheel events by default; --all\n"
       << "shows every event while --record saves the complete raw event stream.\n\n"
       << "Checkpoint 2 experiment commands create only a temporary uinput device.\n"
-      << "They do not grab or modify a physical input device.\n";
+      << "They do not grab or modify a physical input device.\n\n"
+      << "The relay command is an experimental Checkpoint 3/4 safety test. It\n"
+      << "temporarily grabs the selected pointer and mirrors it through uinput.\n";
 }
 
 int devices() {
@@ -88,6 +92,15 @@ int main(int argc, char** argv) {
     const auto packets = smoothwheel::plan_scroll(*preset, direction);
     if (dry_run) { std::cout << smoothwheel::describe_plan(*preset, axis, direction, packets); return 0; }
     return smoothwheel::run_virtual_scroll_experiment(*preset, axis, direction, delay);
+  }
+  if (arg == "relay" && argc >= 3) {
+    int seconds = 10;
+    for (int i = 3; i < argc; ++i) {
+      std::string_view opt{argv[i]};
+      if (opt == "--seconds" && i + 1 < argc) { try { seconds = std::stoi(argv[++i]); } catch (...) { std::cerr << "smoothwheel: invalid seconds\n"; return 2; } }
+      else { std::cerr << "smoothwheel: invalid relay option: " << opt << '\n'; return 2; }
+    }
+    return smoothwheel::run_pointer_relay(argv[2], seconds, 3, std::cout);
   }
   if (arg == "monitor" && argc >= 3) {
     bool wheel_only = true; std::string record_path;

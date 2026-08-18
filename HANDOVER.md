@@ -222,3 +222,9 @@ Run `smoothwheel devices` on a real Linux desktop, select the wheel-capable phys
 The primary UX target is now **intent-preserving velocity-sensitive scrolling**, not smoothing for its own sake. Slow physical wheel movement must remain slow, immediate and precise; rapid wheel movement should accelerate strongly for traversal; reversal must respond immediately rather than fighting stale momentum. Fine-grained output remains a mechanism available to the engine, not the product goal.
 
 A pure `VelocityEstimator` was introduced ahead of hardware capture work so this central policy can be developed deterministically. It currently maps detent cadence to a bounded multiplier, leaves slow/isolated input at 1x, accumulates acceleration under rapid same-direction input, and resets on reversal/non-monotonic timestamps. Do not couple this estimator to evdev/uinput I/O.
+
+## CP3/CP4 hardware gate
+
+A time-bounded `smoothwheel relay DEVICE --seconds N` experiment now clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and then mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. This is intentionally not a daemon and has no autostart path.
+
+This code is **not considered CP3/CP4 complete until tested on a real physical mouse**. The next hardware test must verify movement, left/right/middle/extra buttons, vertical/horizontal wheel behaviour, no duplicate input, Ctrl-C recovery, timed-expiry recovery, and preferably forced-process-death recovery. If capability cloning misses an event family on the real device, fix the generic cloning model rather than hard-coding the user's mouse.

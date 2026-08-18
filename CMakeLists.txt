@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(SmoothWheel VERSION 0.0.1 LANGUAGES CXX)
 option(SMOOTHWHEEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
-add_library(smoothwheel_core src/input.cpp src/experiment.cpp src/velocity.cpp)
+add_library(smoothwheel_core src/input.cpp src/experiment.cpp src/velocity.cpp src/relay.cpp)
 target_compile_features(smoothwheel_core PUBLIC cxx_std_20)
 target_include_directories(smoothwheel_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(smoothwheel_core PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>)

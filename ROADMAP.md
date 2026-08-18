@@ -41,6 +41,8 @@ The first development phase is risk-first. The project should prove the Linux in
 - measure added pointer latency and event loss;
 - build deterministic fixture-driven pass-through tests.
 
+**Current state:** a capability-cloning relay now exists: it creates a temporary uinput device from the source pointer's EV_REL/EV_KEY capabilities and mirrors raw `input_event` packets unchanged. It is intentionally time-bounded. Real-hardware equivalence is the remaining gate.
+
 **Exit evidence:** with transformation disabled, recorded input produces equivalent virtual output.
 
 ## Checkpoint 4 — Safe exclusive capture
@@ -53,6 +55,8 @@ The first development phase is risk-first. The project should prove the Linux in
 - test daemon termination, exceptions and device disconnects;
 - build a watchdog/fail-open strategy if needed;
 - document safe development/recovery procedure.
+
+**Current state:** the experimental relay acquires `EVIOCGRAB` only after the virtual device exists, releases it through RAII on normal scope exit, handles SIGINT/SIGTERM as stop requests, and destroys the virtual device on exit. This has compiled/tested but has **not yet been exercised on physical hardware**.
 
 **Safety gate:** do not enable automatic startup until repeated crash/disconnect tests demonstrate reliable pointer recovery.
 
