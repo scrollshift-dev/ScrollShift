@@ -6,6 +6,7 @@
 #include "smoothwheel/experiment.hpp"
 #include "smoothwheel/input.hpp"
 #include "smoothwheel/relay.hpp"
+#include "smoothwheel/transform.hpp"
 #include "smoothwheel/version.hpp"
 
 namespace {
@@ -18,6 +19,8 @@ void print_help() {
       << "  smoothwheel inspect DEVICE\n"
       << "  smoothwheel monitor DEVICE [--all] [--record FILE]\n"
       << "  smoothwheel relay DEVICE [--seconds N]\n"
+      << "  smoothwheel accelerate DEVICE [--profile NAME] [--seconds N]\n"
+      << "  smoothwheel accelerate --profiles\n"
       << "  smoothwheel experiment --list\n"
       << "  smoothwheel experiment PRESET [--axis vertical|horizontal] [--direction +/-1] [--delay SECONDS] [--dry-run]\n"
       << "  smoothwheel --help\n"
@@ -92,6 +95,21 @@ int main(int argc, char** argv) {
     const auto packets = smoothwheel::plan_scroll(*preset, direction);
     if (dry_run) { std::cout << smoothwheel::describe_plan(*preset, axis, direction, packets); return 0; }
     return smoothwheel::run_virtual_scroll_experiment(*preset, axis, direction, delay);
+  }
+  if (arg == "accelerate" && argc == 3 && std::string_view(argv[2]) == "--profiles") {
+    for (const auto& profile : smoothwheel::acceleration_profiles())
+      std::cout << profile.name << "  " << profile.description << '\n';
+    return 0;
+  }
+  if (arg == "accelerate" && argc >= 3) {
+    int seconds = 20; std::string profile = "balanced";
+    for (int i = 3; i < argc; ++i) {
+      std::string_view opt{argv[i]};
+      if (opt == "--seconds" && i + 1 < argc) { try { seconds = std::stoi(argv[++i]); } catch (...) { std::cerr << "smoothwheel: invalid seconds\n"; return 2; } }
+      else if (opt == "--profile" && i + 1 < argc) profile = argv[++i];
+      else { std::cerr << "smoothwheel: invalid accelerate option: " << opt << '\n'; return 2; }
+    }
+    return smoothwheel::run_accelerated_relay(argv[2], profile, seconds, 3, std::cout);
   }
   if (arg == "relay" && argc >= 3) {
     int seconds = 10;
