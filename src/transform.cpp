@@ -29,7 +29,7 @@ int consume_legacy(double contribution, double& remainder) {
 std::vector<AccelerationProfile> acceleration_profiles() {
   return {
       {"precision", "Slow 0.70x precision with a gentle 2x ceiling", {420.0, 55.0, 0.70, 2.0, 0.30, 1.20}},
-      {"balanced", "Very long precision range with a 12x hard-spin ceiling", {650.0, 24.0, 0.40, 12.0, 0.24, 4.60}},
+      {"balanced", "Clear slow/fast separation without extreme travel", {420.0, 45.0, 1.0, 4.0, 0.38, 1.0}},
       {"fast", "Precise low end with strong 12x rapid traversal", {500.0, 32.0, 0.45, 12.0, 0.47, 1.85}},
       {"aggressive", "Very wide 0.40x to 16x acceleration range", {520.0, 28.0, 0.40, 16.0, 0.55, 1.65}},
   };

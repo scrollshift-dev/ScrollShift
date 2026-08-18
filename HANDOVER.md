@@ -234,11 +234,11 @@ CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling,
 Profiles are intentionally exaggerated enough to distinguish the product direction:
 
 - `precision`: maximum 2x;
-- `balanced`: approximately 0.45x to 9x, with a steep curve that expands both precision and hard-spin traversal;
+- `balanced`: original preferred response, 1x to 4x with a linear cadence curve;
 - `fast`: approximately 0.45x to 12x;
 - `aggressive`: approximately 0.40x to 16x.
 
-These are experimental tuning presets, not frozen user configuration. Real-hardware feedback first found the balanced curve pleasant but its upper ceiling too low, then found the 6x version still too fast at the slow end and too constrained at the fast end. Balanced now uses a 0.45x floor, 9x ceiling and stronger curve exponent. The packet transformer also carries a fractional legacy-wheel remainder, allowing sub-detent high-resolution output without spuriously emitting a full `REL_WHEEL` detent every packet. Same-direction rapid input increases the multiplier; reversal resets immediately and clears opposing fractional legacy carry. Momentum and post-input decay are not implemented yet.
+These are experimental tuning presets, not frozen user configuration. Real-hardware experiments tried substantially wider balanced ranges, but the original balanced response was preferred overall. Balanced is restored to a 1x floor, 4x ceiling, 420 ms slow interval, 45 ms fast interval, 0.38 smoothing and a linear curve. The packet transformer also carries a fractional legacy-wheel remainder, allowing sub-detent high-resolution output without spuriously emitting a full `REL_WHEEL` detent every packet. Same-direction rapid input increases the multiplier; reversal resets immediately and clears opposing fractional legacy carry. Momentum and post-input decay are not implemented yet.
 
 ## Persistent daemon/service state
 
