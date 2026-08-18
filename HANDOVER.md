@@ -80,7 +80,7 @@ In practice:
 - keep a recoverable input/session path during early grab experiments;
 - release grabs on every controlled shutdown path;
 - deliberately kill/crash the process during Checkpoint 4 and verify recovery;
-- do not enable automatic startup until fail-open behaviour is demonstrated.
+- introduce the service explicitly for lifecycle testing first; leave boot-time autostart enabled only after fail-open forced-death/reconnect behaviour is demonstrated.
 
 ## Architectural boundaries
 
@@ -178,7 +178,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-The binary now implements `devices`, `inspect DEVICE`, and read-only `monitor DEVICE [--all] [--record FILE]` in addition to `--help` and `--version`. The event-trace parser/serializer is unit tested and the build passes with warnings treated as errors.
+The binary now implements read-only discovery/trace tooling, temporary relay/acceleration diagnostics, persistent configuration generation, a long-running daemon, and systemd service controls. The current automated suite includes CLI, input-fixture, virtual-output planner, velocity, packet-transform and configuration/selector tests, built with warnings treated as errors.
 
 ## Development version
 
@@ -213,17 +213,17 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Re-test the revised `balanced` profile on the same real mouse. Hardware feedback now says the direction is “pretty damn good” but should be slower when deliberately slow and faster when spun hard. Balanced therefore spans roughly 0.45x to 9x with a steeper upper curve. Check three things separately: isolated/slow detents should feel more precise than native scrolling, ordinary cadence should remain comfortable, and a hard spin should traverse much farther than before. Reversal should immediately return to the precision end. If this dynamic range feels right, freeze the cadence curve provisionally before deciding whether any momentum/decay is desirable. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
+Dogfood the newly implemented systemd daemon on the real Linux test machine. Configure it from the known physical mouse event node, enable it, and verify normal background scrolling first. Then test service restart, forced `SIGKILL` recovery, mouse unplug/replug with event-node rediscovery, and suspend/resume. Preserve any observed failure as a deterministic regression or lifecycle test where possible. Do not call CP4 or CP7 complete until these service-level recovery paths have hardware evidence.
 
 ## Product-direction update after CP2
 
 The primary UX target is now **intent-preserving velocity-sensitive scrolling**, not smoothing for its own sake. Slow physical wheel movement must remain slow, immediate and precise; rapid wheel movement should accelerate strongly for traversal; reversal must respond immediately rather than fighting stale momentum. Fine-grained output remains a mechanism available to the engine, not the product goal.
 
-A pure `VelocityEstimator` was introduced ahead of hardware capture work so this central policy can be developed deterministically. It currently maps detent cadence to a bounded multiplier, leaves slow/isolated input at 1x, accumulates acceleration under rapid same-direction input, and resets on reversal/non-monotonic timestamps. Do not couple this estimator to evdev/uinput I/O.
+A pure `VelocityEstimator` was introduced ahead of hardware capture work so this central policy can be developed deterministically. It maps detent cadence to a bounded profile-dependent multiplier, supports sub-1x slow precision in the tuned profiles, accumulates acceleration under rapid same-direction input, and resets on reversal/non-monotonic timestamps. Do not couple this estimator to evdev/uinput I/O.
 
 ## CP3/CP4 hardware gate
 
-A time-bounded `smoothwheel relay DEVICE --seconds N` experiment now clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and then mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. This is intentionally not a daemon and has no autostart path.
+A time-bounded `smoothwheel relay DEVICE --seconds N` experiment clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. That experiment remains useful for diagnostics, while a separate long-running daemon/service path now exists for dogfooding.
 
 CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling, no obvious duplicate input, timed expiry, and Ctrl-C recovery all behaved normally. CP4 still requires deliberate forced-process-death and device-loss recovery evidence. If capability cloning later misses an event family, fix the generic model rather than hard-coding one mouse.
 
@@ -235,10 +235,27 @@ Profiles are intentionally exaggerated enough to distinguish the product directi
 
 - `precision`: maximum 2x;
 - `balanced`: approximately 0.45x to 9x, with a steep curve that expands both precision and hard-spin traversal;
-- `fast`: maximum 7x;
-- `aggressive`: maximum 10x.
+- `fast`: approximately 0.45x to 12x;
+- `aggressive`: approximately 0.40x to 16x.
 
 These are experimental tuning presets, not frozen user configuration. Real-hardware feedback first found the balanced curve pleasant but its upper ceiling too low, then found the 6x version still too fast at the slow end and too constrained at the fast end. Balanced now uses a 0.45x floor, 9x ceiling and stronger curve exponent. The packet transformer also carries a fractional legacy-wheel remainder, allowing sub-detent high-resolution output without spuriously emitting a full `REL_WHEEL` detent every packet. Same-direction rapid input increases the multiplier; reversal resets immediately and clears opposing fractional legacy carry. Momentum and post-input decay are not implemented yet.
+
+## Persistent daemon/service state
+
+A first production-shaped runtime now exists:
+
+- `smoothwheel configure DEVICE [--profile NAME]` inspects a real device and writes `/etc/smoothwheel/config.conf`;
+- configuration persists vendor/product + normalized kernel name, never `/dev/input/eventN`;
+- matching requires a relative wheel pointer and explicitly excludes SmoothWheel virtual devices;
+- zero matches cause the daemon to wait, while multiple matches cause it to refuse capture rather than guess;
+- `smoothwheel daemon` attaches with the configured acceleration profile and rediscovers after source-session failure;
+- `smoothwheel service enable|status|restart|start|stop|disable` provides simple systemd control;
+- the systemd unit uses `Restart=on-failure` and is installed with the binary;
+- the current permission model is a root system service, intentionally avoiding broad `/dev/input` permission changes during early development.
+
+The user's receiver exposes a pointer node and a consumer-control node sharing vendor/product identity, so retaining the normalized kernel name is a real requirement, not decorative metadata. Surrounding whitespace from kernel-reported names is normalized before serialization/matching.
+
+This milestone has deterministic parser/selector tests and a staged install-tree check, but no claim should yet be made that hotplug, boot startup, forced process death or suspend/resume are proven. Those are the next hardware gate.
 
 ## Checkpoint packaging
 

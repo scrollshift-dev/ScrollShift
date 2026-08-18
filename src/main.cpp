@@ -62,15 +62,15 @@ int service_command(std::string_view action) {
   else if (action == "restart") verb = "restart";
   else if (action == "start") verb = "start";
   else if (action == "stop") verb = "stop";
-  else if (action == "enable") {
+  else if (action == "enable") { verb = "enable"; extra = "--now"; }
+  else if (action == "disable") { verb = "disable"; extra = "--now"; }
+  else { std::cerr << "smoothwheel: service action must be status, restart, start, stop, enable, or disable\n"; return 2; }
+  if (action == "start" || action == "restart" || action == "enable") {
     if (std::system("systemctl daemon-reload") != 0) {
       std::cerr << "smoothwheel: systemctl daemon-reload failed\n";
       return 1;
     }
-    verb = "enable"; extra = "--now";
   }
-  else if (action == "disable") { verb = "disable"; extra = "--now"; }
-  else { std::cerr << "smoothwheel: service action must be status, restart, start, stop, enable, or disable\n"; return 2; }
   if (extra) ::execlp("systemctl", "systemctl", verb, extra, "smoothwheel.service", static_cast<char*>(nullptr));
   else ::execlp("systemctl", "systemctl", verb, "smoothwheel.service", static_cast<char*>(nullptr));
   std::cerr << "smoothwheel: failed to execute systemctl\n";

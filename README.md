@@ -1,70 +1,35 @@
 # SmoothWheel
 
-**Native smooth mouse-wheel scrolling for Linux.**
+**Intent-aware mouse-wheel scrolling for Linux.**
 
-SmoothWheel is an early-stage C++ utility intended to transform coarse mouse-wheel detents into fluid, high-resolution scrolling at the Linux input layer. The current repository is a development scaffold; it does **not** intercept input yet.
+SmoothWheel is an early-stage C++ utility that sits at the Linux input layer, keeps ordinary pointer behaviour transparent, and transforms wheel motion according to how deliberately or rapidly the wheel is moved. The current `balanced` profile is tuned for slow precision at the low end and much faster traversal under a hard spin.
 
 The working architecture is:
 
 ```text
 physical mouse
     ↓
-evdev
+evdev + exclusive grab
     ↓
 SmoothWheel
     ├── pointer movement/buttons → unchanged
-    └── wheel events → smoothing model
+    └── wheel packets → velocity estimator → acceleration transform
     ↓
 uinput virtual pointer
     ↓
 libinput → Wayland / XWayland / X11 → applications
 ```
 
-This design is deliberately provisional. The first checkpoints exist to prove that the virtual high-resolution event path feels correct across real applications and that exclusive input capture can fail safely.
+SmoothWheel is still developmental. Real-hardware pass-through and acceleration have been validated on the initial Linux test machine, but crash/reconnect, suspend/resume, broader device diversity and application compatibility remain active hardening work.
 
-## Build
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build -j
-ctest --test-dir build --output-on-failure
-./build/smoothwheel --help
-```
-
-Requires a C++20 compiler and CMake 3.20+. Input dependencies such as libevdev will be introduced only when the corresponding checkpoint needs them.
-
-## Project principles
-
-- **Fail open whenever possible.** A daemon crash must not strand the user without pointer control.
-- **Preserve non-wheel behaviour.** Motion, buttons and unrelated capabilities should remain transparent.
-- **Prefer compositor-independent primitives.** Use the Linux input stack before reaching for desktop-specific hooks.
-- **Measure instead of guessing.** Record event streams and latency; do not tune scroll feel entirely by intuition.
-- **Keep the core small.** First make one wheel detent feel excellent everywhere. Add configuration and UI only when the underlying semantics are stable.
-
-See [`ROADMAP.md`](ROADMAP.md) for the first ten checkpoints and [`HANDOVER.md`](HANDOVER.md) for the current development state.
-
-## Read-only input reconnaissance
-
-Checkpoint 1 adds non-invasive diagnostics. These commands **do not grab devices or inject input**.
-
-```bash
-./build/smoothwheel devices
-./build/smoothwheel inspect /dev/input/eventX
-./build/smoothwheel monitor /dev/input/eventX --record mouse.trace
-```
-
-`monitor` prints wheel events and packet boundaries while `--record` stores the complete raw event stream for deterministic fixture-driven development. Access to `/dev/input/event*` is commonly restricted; during development, run the diagnostic with sufficient read permission rather than changing device permissions globally.
-
-## Development build
-
-The shortest development path is:
+## Build and test
 
 ```bash
 make
 make test
 ```
 
-This is a thin convenience wrapper around CMake. The equivalent explicit commands are:
+Equivalent CMake commands:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSMOOTHWHEEL_WARNINGS_AS_ERRORS=ON
@@ -72,35 +37,131 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-### Checkpoint 2 virtual-wheel experiment
+Requires Linux, a C++20 compiler and CMake 3.20+.
 
-Checkpoint 2 creates a **temporary virtual uinput pointer only**. It does not grab, disable, or modify the physical mouse. List the available diagnostic gestures with:
+## Run an explicit development session
+
+List input devices:
+
+```bash
+sudo ./build/smoothwheel devices
+```
+
+Run the current balanced acceleration path for 30 seconds:
+
+```bash
+sudo ./build/smoothwheel accelerate /dev/input/eventX --profile balanced --seconds 30
+```
+
+The time-bounded development commands remain useful for diagnostics, but ordinary use should move to the service flow below.
+
+## Install as a background service
+
+SmoothWheel installs a systemd system service because evdev capture and uinput creation require privileged input-device access in the current design.
+
+First build and install:
+
+```bash
+make test
+sudo make install
+```
+
+Then identify the real pointer event node and generate configuration from it:
+
+```bash
+sudo smoothwheel devices
+sudo smoothwheel configure /dev/input/eventX
+```
+
+`configure` does **not** persist `/dev/input/eventX`. Event numbers are unstable across boots and reconnects. It stores the device vendor/product identity plus normalized kernel name in:
+
+```text
+/etc/smoothwheel/config.conf
+```
+
+The default generated profile is `balanced`. A different experimental profile can be selected during configuration:
+
+```bash
+sudo smoothwheel configure /dev/input/eventX --profile precision
+```
+
+Enable the service and start it immediately:
+
+```bash
+sudo smoothwheel service enable
+```
+
+The wrapper performs a systemd daemon reload before enabling the unit.
+
+Day-to-day service controls are:
+
+```bash
+smoothwheel service status
+sudo smoothwheel service restart
+sudo smoothwheel service stop
+sudo smoothwheel service start
+sudo smoothwheel service disable
+```
+
+The daemon rediscovers the current event node from stable identity after startup or reconnect. If no matching mouse exists it waits. If the configured identity is ambiguous it refuses to grab any device instead of guessing. SmoothWheel-created virtual devices are excluded from capture candidates to prevent reinjection loops.
+
+The systemd unit uses `Restart=on-failure`, while ordinary mouse disappearance/reconnect is handled inside the daemon itself.
+
+## Current configuration
+
+Generated configuration is intentionally small:
+
+```ini
+device_vendor = 0x3151
+device_product = 0x402d
+device_name = Example Wireless Mouse
+profile = balanced
+reconnect_ms = 1000
+```
+
+Do not hand-edit event-node numbers into configuration. `device_vendor`, `device_product`, and `device_name` are the persistent selector.
+
+## Diagnostics and reconnaissance
+
+These commands are non-invasive and useful when diagnosing hardware:
+
+```bash
+smoothwheel inspect /dev/input/eventX
+smoothwheel monitor /dev/input/eventX --record mouse.trace
+```
+
+`monitor` never grabs or injects input. It can record complete raw evdev traces for fixture-driven regression testing.
+
+## Project principles
+
+- **Fail open whenever possible.** A daemon crash must not strand the user without pointer control.
+- **Preserve non-wheel behaviour.** Motion, buttons and unrelated capabilities should remain transparent.
+- **Preserve intent, not animation.** Slow wheel motion should stay slow and precise; hard spins should become dramatically faster.
+- **Prefer compositor-independent primitives.** Use the Linux input stack before desktop-specific hooks.
+- **Measure instead of guessing.** Capture real event streams, latency and failure behaviour.
+- **Keep configuration small.** Expose user concepts, not every internal tuning constant.
+- **Never guess which device to grab.** Ambiguity is a failure state, not a precedence rule.
+
+See [`ROADMAP.md`](ROADMAP.md) for checkpoint scope and [`HANDOVER.md`](HANDOVER.md) for the current development state.
+
+## Development-only virtual-wheel experiment
+
+Checkpoint 2's uinput feasibility probes remain available:
 
 ```bash
 ./build/smoothwheel experiment --list
-```
-
-Preview exactly what a preset would emit without touching `/dev/uinput`:
-
-```bash
 ./build/smoothwheel experiment fine16 --dry-run
-```
-
-Running a real experiment usually requires permission to open `/dev/uinput`, so during development it may be run with `sudo`. The command waits three seconds before emitting a single detent-equivalent gesture so the pointer can be moved over the target application:
-
-```bash
 sudo ./build/smoothwheel experiment fine16
 ```
 
-These experiments are intentionally narrow feasibility probes. They are not yet the SmoothWheel smoothing algorithm.
+These are diagnostic tools, not the production motion model.
 
-## Experimental acceleration gate
+## Checkpoint archives
 
-After CP3 transparent pass-through was validated on real hardware, SmoothWheel added an experimental velocity-sensitive relay:
+Use:
 
 ```bash
-./build/smoothwheel accelerate --profiles
-sudo ./build/smoothwheel accelerate /dev/input/eventX --profile balanced --seconds 20
+make checkpoint
 ```
 
-This is intentionally time-bounded and developmental. It grabs the selected physical pointer only after creating a virtual replacement. Slow/isolated wheel input can deliberately fall below native detent speed while rapid same-direction cadence accelerates sharply. Balanced currently spans roughly 0.45x to 9x; the legacy wheel companion is accumulated fractionally so sub-detent high-resolution output does not falsely emit a full legacy detent each packet.
+when handing the repository to another environment. The archive excludes configured CMake build trees because CMake caches absolute source/build paths.

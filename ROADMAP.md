@@ -54,7 +54,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Current state:** normal expiry and Ctrl-C recovery have been exercised successfully on real hardware. The relay creates the virtual device before acquiring `EVIOCGRAB`, releases through RAII on controlled paths, and relies on descriptor teardown for process-death fail-open behavior. Forced process death and source-disconnect recovery remain to be exercised before CP4 is closed.
 
-**Safety gate:** do not enable automatic startup until repeated crash/disconnect tests demonstrate reliable pointer recovery.
+**Safety gate:** use the new service initially as an explicit hardware test. Do not leave boot-time autostart enabled until forced-death and disconnect/reconnect tests demonstrate reliable pointer recovery.
 
 ## Checkpoint 5 — Velocity model and motion engine v1 🚧
 
@@ -90,7 +90,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Exit evidence:** a corpus of real and synthetic traces exercises every supported wheel mode.
 
-## Checkpoint 7 — Daemon lifecycle, permissions and configuration
+## Checkpoint 7 — Daemon lifecycle, permissions and configuration 🚧
 
 **Goal:** turn the prototype into an everyday background utility without making it a desktop application yet.
 
@@ -98,11 +98,15 @@ The first development phase is risk-first. The project should prove the Linux in
 - device selection by stable identity rather than event node number;
 - minimal configuration file with validated values;
 - clean hotplug/reconnect handling;
-- decide and document udev/group/systemd-user permission model;
-- optional systemd user/service integration where appropriate;
+- decide and document udev/group/systemd permission model;
+- systemd service integration;
 - clear diagnostics for missing permissions or unsupported devices.
 
-**Exit evidence:** a user can install, configure, start, stop and diagnose SmoothWheel without running an opaque root daemon.
+**Current state:** the first long-running daemon and systemd service are implemented. `smoothwheel configure DEVICE` persists vendor/product identity plus normalized kernel device name rather than `/dev/input/eventN`; the daemon rediscovers the current event node, waits through absence, retries after device-session failure, refuses ambiguous matches, and excludes SmoothWheel virtual devices from capture. `smoothwheel service enable|status|restart|start|stop|disable` wraps systemd operations, and the unit uses `Restart=on-failure`. The current permission model is deliberately a root system service; a less-privileged udev/group model can be evaluated later rather than weakening input permissions prematurely.
+
+**Remaining gate:** install/enable this service on the real test machine, verify boot/start/restart behaviour, deliberately kill the daemon and verify systemd recovery, unplug/replug the mouse, and exercise suspend/resume before calling the lifecycle/hotplug portion complete.
+
+**Exit evidence:** a user can install, configure, start, stop and diagnose SmoothWheel predictably, and background recovery has real-hardware evidence rather than only RAII/unit-test reasoning.
 
 ## Checkpoint 8 — Desktop/application compatibility matrix
 
