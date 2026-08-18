@@ -216,3 +216,9 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 Finish **Checkpoint 1 hardware evidence** before starting Checkpoint 2.
 
 Run `smoothwheel devices` on a real Linux desktop, select the wheel-capable physical mouse, then run `smoothwheel monitor /dev/input/eventX --record mouse.trace` and exercise several slow detents, rapid detents, direction reversals, and horizontal/free-spin behaviour if the device supports it. Preserve the resulting trace as a regression fixture after reviewing it for device-specific metadata/privacy. Do not grab devices and do not inject events yet.
+
+## Product-direction update after CP2
+
+The primary UX target is now **intent-preserving velocity-sensitive scrolling**, not smoothing for its own sake. Slow physical wheel movement must remain slow, immediate and precise; rapid wheel movement should accelerate strongly for traversal; reversal must respond immediately rather than fighting stale momentum. Fine-grained output remains a mechanism available to the engine, not the product goal.
+
+A pure `VelocityEstimator` was introduced ahead of hardware capture work so this central policy can be developed deterministically. It currently maps detent cadence to a bounded multiplier, leaves slow/isolated input at 1x, accumulates acceleration under rapid same-direction input, and resets on reversal/non-monotonic timestamps. Do not couple this estimator to evdev/uinput I/O.

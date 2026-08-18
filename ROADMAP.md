@@ -56,19 +56,24 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Safety gate:** do not enable automatic startup until repeated crash/disconnect tests demonstrate reliable pointer recovery.
 
-## Checkpoint 5 — Smoothing engine v1
+## Checkpoint 5 — Velocity model and motion engine v1
 
-**Goal:** implement the transformation as a pure, deterministic component independent of Linux I/O.
+**Goal:** preserve user intent by making slow wheel input precise and fast wheel input accelerate strongly, implemented as a pure deterministic component independent of Linux I/O.
 
-- model wheel input as impulses in normalized `v120` units;
-- maintain velocity/momentum state;
+- estimate physical wheel cadence in normalized `v120` units;
+- map cadence to an explicit acceleration multiplier;
+- reset acceleration immediately on direction reversal;
+- keep slow isolated detents at baseline precision;
+- maintain velocity/momentum state only where it improves responsiveness;
 - emit fixed-step or time-based fractional output;
 - implement decay and rapid-input accumulation;
 - preserve total intended scroll distance within defined rounding bounds;
 - handle reversal without long unwanted tails;
 - unit-test timing, conservation, cancellation and determinism using a fake clock.
 
-**Exit evidence:** the smoothing model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
+**Current state:** the first pure cadence estimator is implemented and deterministic tests prove slow-input baseline behaviour, monotonic acceleration under rapid input, bounded maximum acceleration, and immediate reset on reversal. The output/momentum stage remains future work.
+
+**Exit evidence:** the complete motion model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
 
 ## Checkpoint 6 — Complete wheel semantics
 
