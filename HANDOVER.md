@@ -80,7 +80,9 @@ In practice:
 - keep a recoverable input/session path during early grab experiments;
 - release grabs on every controlled shutdown path;
 - deliberately kill/crash the process during Checkpoint 4 and verify recovery;
-- introduce the service explicitly for lifecycle testing first; leave boot-time autostart enabled only after fail-open forced-death/reconnect behaviour is demonstrated.
+- introduce the service explicitly for lifecycle testing first; leave boot-time autostart enabled only after fail-open forced-death/reconnect behaviour is demonstrated;
+- invalid configuration must fail closed without a systemd restart storm;
+- service stop/restart must remain prompt even while the daemon is waiting for a missing mouse.
 
 ## Architectural boundaries
 
@@ -260,3 +262,11 @@ This milestone has deterministic parser/selector tests and a staged install-tree
 ## Checkpoint packaging
 
 When handing the repository to another environment, do not include the local CMake `build/` tree. CMake caches absolute source/build paths, so copying a configured build directory can make a clean checkout fail before compilation. Use `make checkpoint` to create `../SmoothWheel-checkpoint.zip`; it preserves Git metadata while excluding build/cache artifacts.
+
+## 2026-08-18 lifecycle hardening update
+
+The daemon/service layer now has deterministic regression coverage for device-match states (missing, unique, ambiguous) and prompt SIGTERM shutdown while waiting for a device even when `reconnect_ms` is configured to 30000 ms. Reconnect sleeps are interruptible in short quanta rather than one long uninterruptible sleep. The systemd unit uses `RestartPreventExitStatus=2`, so missing/invalid configuration exits do not loop forever under `Restart=on-failure`.
+
+`smoothwheel doctor` is a read-only/non-grabbing diagnostic that validates config and reports whether the configured stable identity is currently missing, uniquely ready, or ambiguous. `smoothwheel service logs` provides a compact journal view for dogfooding diagnostics.
+
+These changes reduce the next hardware gate to behavior that cannot be established in a container: actual systemd installation on the target machine, SIGKILL while owning the physical mouse, receiver unplug/replug, and suspend/resume.

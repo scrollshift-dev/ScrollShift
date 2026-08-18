@@ -7,8 +7,9 @@ After=systemd-udevd.service
 Type=simple
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/smoothwheel daemon --config /etc/smoothwheel/config.conf
 Restart=on-failure
+RestartPreventExitStatus=2
 RestartSec=2s
-TimeoutStopSec=5s
+TimeoutStopSec=2s
 
 [Install]
 WantedBy=multi-user.target

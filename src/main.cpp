@@ -22,7 +22,8 @@ void print_help() {
       << "  smoothwheel devices\n"
       << "  smoothwheel configure DEVICE [--profile NAME] [--config FILE]\n"
       << "  smoothwheel daemon [--config FILE]\n"
-      << "  smoothwheel service status|restart|start|stop|enable|disable\n"
+      << "  smoothwheel doctor [--config FILE]\n"
+      << "  smoothwheel service status|restart|start|stop|enable|disable|logs\n"
       << "  smoothwheel inspect DEVICE\n"
       << "  smoothwheel monitor DEVICE [--all] [--record FILE]\n"
       << "  smoothwheel relay DEVICE [--seconds N]\n"
@@ -64,7 +65,12 @@ int service_command(std::string_view action) {
   else if (action == "stop") verb = "stop";
   else if (action == "enable") { verb = "enable"; extra = "--now"; }
   else if (action == "disable") { verb = "disable"; extra = "--now"; }
-  else { std::cerr << "smoothwheel: service action must be status, restart, start, stop, enable, or disable\n"; return 2; }
+  else if (action == "logs") {
+    ::execlp("journalctl", "journalctl", "-u", "smoothwheel.service", "-n", "80", "--no-pager", static_cast<char*>(nullptr));
+    std::cerr << "smoothwheel: failed to execute journalctl\n";
+    return 1;
+  }
+  else { std::cerr << "smoothwheel: service action must be status, restart, start, stop, enable, disable, or logs\n"; return 2; }
   if (action == "start" || action == "restart" || action == "enable") {
     if (std::system("systemctl daemon-reload") != 0) {
       std::cerr << "smoothwheel: systemctl daemon-reload failed\n";
@@ -103,6 +109,15 @@ int main(int argc, char** argv) {
       else { std::cerr << "smoothwheel: invalid daemon option: " << opt << '\n'; return 2; }
     }
     return smoothwheel::run_daemon(config_path, std::cout);
+  }
+  if (arg == "doctor") {
+    std::filesystem::path config_path = "/etc/smoothwheel/config.conf";
+    for (int i = 2; i < argc; ++i) {
+      const std::string_view opt{argv[i]};
+      if (opt == "--config" && i + 1 < argc) config_path = argv[++i];
+      else { std::cerr << "smoothwheel: invalid doctor option: " << opt << '\n'; return 2; }
+    }
+    return smoothwheel::run_doctor(config_path, std::cout);
   }
   if (arg == "service" && argc == 3) return service_command(argv[2]);
   if (arg == "inspect" && argc == 3) {

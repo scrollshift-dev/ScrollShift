@@ -104,6 +104,8 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Current state:** the first long-running daemon and systemd service are implemented. `smoothwheel configure DEVICE` persists vendor/product identity plus normalized kernel device name rather than `/dev/input/eventN`; the daemon rediscovers the current event node, waits through absence, retries after device-session failure, refuses ambiguous matches, and excludes SmoothWheel virtual devices from capture. `smoothwheel service enable|status|restart|start|stop|disable` wraps systemd operations, and the unit uses `Restart=on-failure`. The current permission model is deliberately a root system service; a less-privileged udev/group model can be evaluated later rather than weakening input permissions prematurely.
 
+**Current hardening:** device matching now has explicit missing/unique/ambiguous states with regression coverage. Reconnect waits are interruptible so SIGTERM remains prompt even at the maximum 30-second reconnect interval. Invalid/missing configuration exits with status 2 and the systemd unit uses `RestartPreventExitStatus=2` to avoid configuration-error restart storms. `smoothwheel doctor` validates configuration/device matching without grabbing input.
+
 **Remaining gate:** install/enable this service on the real test machine, verify boot/start/restart behaviour, deliberately kill the daemon and verify systemd recovery, unplug/replug the mouse, and exercise suspend/resume before calling the lifecycle/hotplug portion complete.
 
 **Exit evidence:** a user can install, configure, start, stop and diagnose SmoothWheel predictably, and background recovery has real-hardware evidence rather than only RAII/unit-test reasoning.

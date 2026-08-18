@@ -93,10 +93,17 @@ sudo smoothwheel service enable
 
 The wrapper performs a systemd daemon reload before enabling the unit.
 
+Before starting the service, a non-grabbing health check can validate the configuration and current device match:
+
+```bash
+sudo smoothwheel doctor
+```
+
 Day-to-day service controls are:
 
 ```bash
 smoothwheel service status
+smoothwheel service logs
 sudo smoothwheel service restart
 sudo smoothwheel service stop
 sudo smoothwheel service start
@@ -105,7 +112,7 @@ sudo smoothwheel service disable
 
 The daemon rediscovers the current event node from stable identity after startup or reconnect. If no matching mouse exists it waits. If the configured identity is ambiguous it refuses to grab any device instead of guessing. SmoothWheel-created virtual devices are excluded from capture candidates to prevent reinjection loops.
 
-The systemd unit uses `Restart=on-failure`, while ordinary mouse disappearance/reconnect is handled inside the daemon itself.
+The systemd unit uses `Restart=on-failure`, but exit status 2 (invalid/missing configuration) is explicitly excluded from restart so a configuration mistake cannot create a restart storm. Ordinary mouse disappearance/reconnect is handled inside the daemon itself. Reconnect waits are signal-interruptible so stop/restart remains prompt even with a large `reconnect_ms`.
 
 ## Current configuration
 

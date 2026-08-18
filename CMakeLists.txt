@@ -54,6 +54,10 @@ if(BUILD_TESTING)
   add_executable(smoothwheel_config_tests tests/config_tests.cpp)
   target_link_libraries(smoothwheel_config_tests PRIVATE smoothwheel_core)
   add_test(NAME config_unit COMMAND smoothwheel_config_tests)
+
+  add_executable(smoothwheel_daemon_tests tests/daemon_tests.cpp)
+  target_link_libraries(smoothwheel_daemon_tests PRIVATE smoothwheel_core)
+  add_test(NAME daemon_lifecycle_unit COMMAND smoothwheel_daemon_tests)
 endif()
 
 install(TARGETS smoothwheel RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

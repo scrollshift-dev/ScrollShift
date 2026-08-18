@@ -31,6 +31,14 @@ int main() {
   auto matches = matching_capture_devices({virtual_device, wrong, real}, config->device);
   assert(matches.size() == 1 && matches.front().name == real.name);
 
+  const auto ready = diagnose_device_match({virtual_device, wrong, real}, config->device);
+  assert(ready.state == DeviceMatchState::Unique && ready.matches.size() == 1);
+  const auto missing = diagnose_device_match({virtual_device, wrong}, config->device);
+  assert(missing.state == DeviceMatchState::Missing && missing.matches.empty());
+  DeviceInfo duplicate = real; duplicate.path = "/dev/input/event99";
+  const auto ambiguous = diagnose_device_match({real, duplicate}, config->device);
+  assert(ambiguous.state == DeviceMatchState::Ambiguous && ambiguous.matches.size() == 2);
+
   const auto roundtrip_text = serialize_config(*config);
   std::istringstream roundtrip(roundtrip_text);
   auto again = parse_config(roundtrip, error);

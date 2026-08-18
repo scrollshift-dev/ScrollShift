@@ -137,6 +137,16 @@ std::vector<DeviceInfo> matching_capture_devices(const std::vector<DeviceInfo>& 
   return matches;
 }
 
+DeviceMatchDiagnosis diagnose_device_match(const std::vector<DeviceInfo>& devices,
+                                           const DeviceSelector& selector) {
+  DeviceMatchDiagnosis diagnosis;
+  diagnosis.matches = matching_capture_devices(devices, selector);
+  if (diagnosis.matches.empty()) diagnosis.state = DeviceMatchState::Missing;
+  else if (diagnosis.matches.size() == 1) diagnosis.state = DeviceMatchState::Unique;
+  else diagnosis.state = DeviceMatchState::Ambiguous;
+  return diagnosis;
+}
+
 int write_config_for_device(const std::filesystem::path& device_path,
                             const std::filesystem::path& config_path,
                             const std::string& profile, std::ostream& output) {
