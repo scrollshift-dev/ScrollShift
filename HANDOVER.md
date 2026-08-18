@@ -2,7 +2,7 @@
 
 ## Canonical state
 
-This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. Checkpoint 1 read-only input reconnaissance is complete. The CLI can enumerate readable evdev devices, inspect wheel capabilities, monitor events, and record complete event traces. Real hardware evidence from a 2.4G Wireless Mouse (3151:402d) is preserved in `tests/fixtures/nick-2.4g-wireless-mouse-vertical.trace`. **No exclusive input grab or smoothing is implemented yet. Checkpoint 2 is the current frontier: a non-grabbing uinput feasibility experiment.**
+SmoothWheel has completed input reconnaissance (CP1), the initial virtual-output feasibility gate (CP2), and transparent physical-pointer pass-through on real hardware (CP3). Normal timed expiry and Ctrl-C recovery of exclusive capture are also proven. CP4 remains open only for abnormal-death/device-loss recovery evidence. CP5 is now active: a deterministic velocity estimator and packet-level acceleration transformer are implemented, with the first real-hardware acceleration tuning gate next.
 
 The paired website repository is `SmoothWheel/SmoothWheel.github.io`. It is built with Nift and intentionally presents SmoothWheel as early development until the feasibility and safety checkpoints are complete.
 
@@ -50,19 +50,19 @@ On 2026-08-18 a real 2.4G Wireless Mouse (USB ID `3151:402d`) was inspected on L
 
 The same USB receiver also exposes a separate Consumer Control event node with horizontal-wheel capabilities but no relative pointer axes. This is evidence that capability presence alone is insufficient for future automatic device selection: physical-device grouping and pointer classification must be considered before exclusive capture.
 
-## Current frontier: Checkpoint 2
+## Completed virtual-output feasibility (Checkpoint 2)
 
 A non-grabbing uinput feasibility spike is implemented. `smoothwheel experiment` creates a temporary virtual pointer with vertical/horizontal low-resolution and high-resolution wheel capabilities, emits one controlled gesture, then removes the device. The physical mouse is never grabbed. The gesture planner is deterministic and tested without requiring `/dev/uinput`.
 
 Available presets intentionally compare a conventional detent against 8/16/24 fractional high-resolution reports and a diagnostic high-resolution-only variant. Each fractional paired preset conserves exactly 120 v120 units and emits one matching legacy detent at the accumulated boundary. This follows the kernel wheel model while allowing us to test what the real desktop actually consumes.
 
-The runtime uinput path cannot be meaningfully validated in the development container because it does not expose `/dev/uinput`; real-desktop validation is therefore the current decision gate.
+The runtime uinput path was exercised on the real desktop. Fractional virtual wheel gestures were accepted, but the subjective difference among simple fixed-subdivision presets was not compelling enough to define the product around visual smoothing alone.
 
 ## Most important unresolved question
 
-Do fine-grained high-resolution wheel events emitted through a virtual uinput pointer produce consistently smooth motion across the real desktop/application stack?
+Can SmoothWheel infer the user's scrolling intent from wheel cadence strongly enough that slow movement remains precise while rapid wheel spins become unmistakably faster, without adding floatiness or surprising reversals?
 
-That is why Checkpoint 2 is an explicit decision gate. Do not spend weeks building configuration, packaging or UI before answering it on real Wayland/XWayland/X11 applications.
+That is the current CP5 hardware gate. Smoothing/interpolation is secondary to intent-preserving acceleration.
 
 ## Safety invariant
 
@@ -213,9 +213,7 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Finish **Checkpoint 1 hardware evidence** before starting Checkpoint 2.
-
-Run `smoothwheel devices` on a real Linux desktop, select the wheel-capable physical mouse, then run `smoothwheel monitor /dev/input/eventX --record mouse.trace` and exercise several slow detents, rapid detents, direction reversals, and horizontal/free-spin behaviour if the device supports it. Preserve the resulting trace as a regression fixture after reviewing it for device-specific metadata/privacy. Do not grab devices and do not inject events yet.
+Exercise the new packet-level acceleration relay on the same real mouse. Start with `balanced`, compare slow single detents against deliberate fast spins, then compare `precision`, `fast`, and `aggressive`. The expected distinction should be obvious in traversal speed, not subtle visual smoothness. If acceleration is useful, keep cadence mapping as the core and only then add bounded momentum/decay. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
 
 ## Product-direction update after CP2
 
@@ -227,4 +225,17 @@ A pure `VelocityEstimator` was introduced ahead of hardware capture work so this
 
 A time-bounded `smoothwheel relay DEVICE --seconds N` experiment now clones EV_REL/EV_KEY capabilities into a temporary uinput pointer, creates that device before taking `EVIOCGRAB`, and then mirrors complete raw `input_event` packets unchanged. SIGINT/SIGTERM request a clean stop; RAII releases the grab and destroys the virtual device. This is intentionally not a daemon and has no autostart path.
 
-This code is **not considered CP3/CP4 complete until tested on a real physical mouse**. The next hardware test must verify movement, left/right/middle/extra buttons, vertical/horizontal wheel behaviour, no duplicate input, Ctrl-C recovery, timed-expiry recovery, and preferably forced-process-death recovery. If capability cloning misses an event family on the real device, fix the generic cloning model rather than hard-coding the user's mouse.
+CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling, no obvious duplicate input, timed expiry, and Ctrl-C recovery all behaved normally. CP4 still requires deliberate forced-process-death and device-loss recovery evidence. If capability cloning later misses an event family, fix the generic model rather than hard-coding one mouse.
+
+## CP5 packet-level acceleration prototype
+
+`smoothwheel accelerate DEVICE --profile NAME --seconds N` now runs the same safe, time-bounded exclusive relay but buffers one evdev packet through `SYN_REPORT` before transforming wheel events. This matters because the kernel can emit `REL_WHEEL` and `REL_WHEEL_HI_RES` together; the transformer derives one cadence multiplier per axis and applies it coherently to both representations while preserving pointer motion/buttons/other events.
+
+Profiles are intentionally exaggerated enough to distinguish the product direction:
+
+- `precision`: maximum 2x;
+- `balanced`: maximum 4x;
+- `fast`: maximum 7x;
+- `aggressive`: maximum 10x.
+
+These are experimental tuning presets, not frozen user configuration. Slow/isolated detents remain at 1x; same-direction rapid input increases the multiplier; reversal resets immediately. Momentum and post-input decay are not implemented yet.

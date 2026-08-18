@@ -93,3 +93,14 @@ sudo ./build/smoothwheel experiment fine16
 ```
 
 These experiments are intentionally narrow feasibility probes. They are not yet the SmoothWheel smoothing algorithm.
+
+## Experimental acceleration gate
+
+After CP3 transparent pass-through was validated on real hardware, SmoothWheel added an experimental velocity-sensitive relay:
+
+```bash
+./build/smoothwheel accelerate --profiles
+sudo ./build/smoothwheel accelerate /dev/input/eventX --profile balanced --seconds 20
+```
+
+This is intentionally time-bounded and developmental. It grabs the selected physical pointer only after creating a virtual replacement. Slow/isolated wheel input remains baseline while rapid same-direction wheel cadence accelerates according to the selected profile.

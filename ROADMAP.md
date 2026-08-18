@@ -15,7 +15,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Exit evidence:** Complete. SmoothWheel identifies and inspects wheel-capable event nodes, records complete input streams read-only, and includes a permanent fixture derived from real hardware evidence.
 
-## Checkpoint 2 — Virtual pointer feasibility spike 🚧
+## Checkpoint 2 — Virtual pointer feasibility spike ✅
 
 **Goal:** prove that a uinput device can produce useful fine-grained wheel motion through the normal desktop stack.
 
@@ -26,11 +26,9 @@ The first development phase is risk-first. The project should prove the Linux in
 - test at least a browser, terminal/editor and native toolkit application;
 - record whether applications actually render the stream smoothly.
 
-**Current state:** the temporary uinput pointer and deterministic experiment presets are implemented and unit-tested. Real desktop/application behaviour is the remaining decision gate.
+**Exit evidence:** Complete enough for the architecture decision. A temporary uinput device successfully emitted conventional and fractional wheel gestures on the real desktop without destabilizing input. The subjective difference between fractional presets was small, which shifted the product target away from smoothing-for-its-own-sake toward intent-preserving velocity acceleration.
 
-**Decision gate:** if fine-grained uinput wheel output is coalesced or quantized badly by the desktop/application stack, stop and reassess the architecture before proceeding.
-
-## Checkpoint 3 — Transparent pointer pass-through
+## Checkpoint 3 — Transparent pointer pass-through ✅
 
 **Goal:** reproduce an input device faithfully before changing any wheel semantics.
 
@@ -41,11 +39,9 @@ The first development phase is risk-first. The project should prove the Linux in
 - measure added pointer latency and event loss;
 - build deterministic fixture-driven pass-through tests.
 
-**Current state:** a capability-cloning relay now exists: it creates a temporary uinput device from the source pointer's EV_REL/EV_KEY capabilities and mirrors raw `input_event` packets unchanged. It is intentionally time-bounded. Real-hardware equivalence is the remaining gate.
+**Exit evidence:** Complete on the current hardware gate. Real-device tests verified normal pointer movement, buttons, scrolling, no obvious duplication, timed expiry, and Ctrl-C recovery while the physical pointer was exclusively relayed through uinput.
 
-**Exit evidence:** with transformation disabled, recorded input produces equivalent virtual output.
-
-## Checkpoint 4 — Safe exclusive capture
+## Checkpoint 4 — Safe exclusive capture 🚧
 
 **Goal:** take ownership of a physical pointer without duplicate events or fragile recovery.
 
@@ -56,11 +52,11 @@ The first development phase is risk-first. The project should prove the Linux in
 - build a watchdog/fail-open strategy if needed;
 - document safe development/recovery procedure.
 
-**Current state:** the experimental relay acquires `EVIOCGRAB` only after the virtual device exists, releases it through RAII on normal scope exit, handles SIGINT/SIGTERM as stop requests, and destroys the virtual device on exit. This has compiled/tested but has **not yet been exercised on physical hardware**.
+**Current state:** normal expiry and Ctrl-C recovery have been exercised successfully on real hardware. The relay creates the virtual device before acquiring `EVIOCGRAB`, releases through RAII on controlled paths, and relies on descriptor teardown for process-death fail-open behavior. Forced process death and source-disconnect recovery remain to be exercised before CP4 is closed.
 
 **Safety gate:** do not enable automatic startup until repeated crash/disconnect tests demonstrate reliable pointer recovery.
 
-## Checkpoint 5 — Velocity model and motion engine v1
+## Checkpoint 5 — Velocity model and motion engine v1 🚧
 
 **Goal:** preserve user intent by making slow wheel input precise and fast wheel input accelerate strongly, implemented as a pure deterministic component independent of Linux I/O.
 
@@ -75,7 +71,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - handle reversal without long unwanted tails;
 - unit-test timing, conservation, cancellation and determinism using a fake clock.
 
-**Current state:** the first pure cadence estimator is implemented and deterministic tests prove slow-input baseline behaviour, monotonic acceleration under rapid input, bounded maximum acceleration, and immediate reset on reversal. The output/momentum stage remains future work.
+**Current state:** the pure cadence estimator and a packet-level wheel transformer are implemented and deterministic. The transformer keeps non-wheel events untouched, treats each `SYN_REPORT` packet as the transformation unit, scales paired legacy/high-resolution wheel representations coherently, and exposes deliberately distinct `precision`, `balanced`, `fast`, and `aggressive` profiles. The first real-hardware acceleration tuning gate is next; momentum/decay is intentionally deferred until cadence-based acceleration is judged useful.
 
 **Exit evidence:** the complete motion model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
 
