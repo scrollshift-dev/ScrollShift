@@ -1,0 +1,204 @@
+# SmoothWheel development handover
+
+## Canonical state
+
+This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. It currently contains only a C++20/CMake CLI scaffold and project documentation. **No input interception, uinput device creation or smoothing is implemented yet.**
+
+The paired website repository is `SmoothWheel/SmoothWheel.github.io`. It is built with Nift and intentionally presents SmoothWheel as early development until the feasibility and safety checkpoints are complete.
+
+## Product goal
+
+SmoothWheel should bring SmoothScroll-style fluid wheel behaviour to Linux at a system-wide level rather than through browser extensions or application plugins.
+
+The current preferred architecture is:
+
+```text
+physical mouse
+    ↓
+Linux evdev device
+    ↓
+SmoothWheel input/capture layer
+    ├── motion/buttons/other supported events → transparent pass-through
+    └── wheel events → normalized smoothing engine
+    ↓
+virtual uinput pointer
+    ↓
+libinput / compositor
+    ↓
+Wayland, XWayland, X11 applications
+```
+
+This is a hypothesis to prove, not an architecture to defend at all costs.
+
+## Why this architecture is plausible
+
+Linux's evdev interface is the generic userspace input-event interface. The kernel uinput module lets a userspace process create a virtual input device and inject events through it. Kernel documentation recommends libevdev as the less error-prone wrapper for new uinput software.
+
+Modern Linux wheel semantics are also suitable for the experiment: `REL_WHEEL_HI_RES` and `REL_HWHEEL_HI_RES` represent high-resolution wheel movement where an accumulated value of 120 corresponds to one detent. libinput exposes this as normalized `v120` scroll values and explicitly allows fractions of 120 for high-resolution scrolling.
+
+Relevant primary references:
+
+- Linux input event codes: https://docs.kernel.org/input/event-codes.html
+- Linux uinput documentation: https://docs.kernel.org/input/uinput.html
+- libevdev API: https://www.freedesktop.org/software/libevdev/doc/latest/
+- libinput wheel API: https://wayland.freedesktop.org/libinput/doc/latest/wheel-api.html
+- Wayland architecture: https://wayland.freedesktop.org/architecture.html
+
+## Most important unresolved question
+
+Do fine-grained high-resolution wheel events emitted through a virtual uinput pointer produce consistently smooth motion across the real desktop/application stack?
+
+That is why Checkpoint 2 is an explicit decision gate. Do not spend weeks building configuration, packaging or UI before answering it on real Wayland/XWayland/X11 applications.
+
+## Safety invariant
+
+Exclusive device capture is dangerous if done casually. `EVIOCGRAB` prevents other clients from receiving events from the grabbed device. Once SmoothWheel starts grabbing a physical mouse, it is responsible for faithfully reproducing the events the desktop still needs.
+
+The project's safety target is:
+
+> SmoothWheel must never knowingly trade smooth scrolling for fragile pointer ownership.
+
+In practice:
+
+- do not grab devices during Checkpoint 1;
+- prove virtual output before exclusive capture;
+- prove complete pass-through before altering wheel events;
+- keep a recoverable input/session path during early grab experiments;
+- release grabs on every controlled shutdown path;
+- deliberately kill/crash the process during Checkpoint 4 and verify recovery;
+- do not enable automatic startup until fail-open behaviour is demonstrated.
+
+## Architectural boundaries
+
+### Input backend
+
+Responsible for device discovery, opening evdev devices, capability inspection, event capture and hotplug. It should not know smoothing policy.
+
+### Virtual output backend
+
+Responsible for creating/configuring the uinput device and emitting correctly packetized Linux input events. It should not know how velocity curves work.
+
+### Smoothing engine
+
+A pure deterministic library driven by normalized wheel impulses and monotonic timestamps/fake-clock ticks. It should not depend on file descriptors, libevdev, uinput, Wayland or a desktop environment.
+
+This separation is important because the smoothing engine should become heavily unit/property tested without privileged input access.
+
+### Runtime/daemon
+
+Owns lifecycle, scheduling, configuration, device reconnects and diagnostics. It coordinates the two I/O backends and the pure smoothing engine.
+
+## Event semantics to preserve
+
+Do not reduce the mouse to `REL_X`, `REL_Y` and three buttons. Real pointer devices may expose additional buttons, horizontal wheels and high-resolution wheel events. Device capability cloning/passthrough should be explicit and tested.
+
+`EV_SYN` packet boundaries matter. A physical hardware action may consist of several input events terminated by `SYN_REPORT`; do not casually stream individual copied events with different grouping.
+
+High-resolution wheel support must preserve information rather than quantizing it back to coarse detents. The kernel defines 120 high-resolution wheel units as one detent; libinput's preferred wheel API represents the same logical unit as `v120`.
+
+## Reinjection-loop prevention
+
+A virtual SmoothWheel device will itself appear in the Linux input subsystem. Device discovery must reliably identify and exclude SmoothWheel-created devices, otherwise the daemon can consume its own emitted events and create a feedback loop.
+
+Design a deterministic identity strategy early (name/vendor/product/phys/uniq properties as appropriate) and regression-test the exclusion rule.
+
+## Configuration philosophy
+
+Do not freeze configuration before the scroll model is understood.
+
+Likely user concepts are:
+
+- selected device(s);
+- overall distance/speed;
+- impulse/acceleration strength;
+- decay or duration;
+- horizontal-wheel enablement.
+
+Avoid exposing internal scheduler constants simply because they exist. Defaults should be good enough that most users do not need a tuning ritual.
+
+## Per-application settings
+
+Treat per-application profiles as later work, not part of the initial architecture. On Wayland the compositor owns input routing and generic clients do not have the same global window-control model as X11. A robust system-wide input path is more important than prematurely coupling the daemon to compositor-specific active-window APIs.
+
+## Performance targets
+
+SmoothWheel is latency-sensitive but not throughput-heavy. Optimize for:
+
+- negligible extra pointer-motion latency;
+- consistent scheduler timing;
+- low idle CPU;
+- no busy-wait loop;
+- stable RSS during long sessions;
+- predictable behaviour independent of display refresh rate.
+
+Do not confuse a very high emission rate with smoothness. Measure whether applications actually consume the additional granularity usefully.
+
+## Testing strategy
+
+Build tests in layers:
+
+1. recorded raw input fixtures;
+2. capability/discovery tests where practical;
+3. pure smoothing-engine unit/property tests with fake time;
+4. virtual-output event-sequence tests;
+5. pass-through equivalence tests;
+6. process lifecycle/crash/recovery tests;
+7. hardware-in-the-loop compatibility tests.
+
+Every bug found using a real mouse should be reduced to a reproducible fixture/test where possible.
+
+Useful future properties include:
+
+- transformation disabled ⇒ output event stream is semantically equivalent to input;
+- one detent's normalized input produces the configured total normalized output within a documented rounding tolerance;
+- equal event/timestamp sequences produce equal output sequences;
+- opposite-direction input cancels/reverses according to explicit rules rather than leaving stale momentum;
+- virtual devices are never accepted as capture sources;
+- daemon exit releases exclusive ownership.
+
+## Current build
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+At this checkpoint the binary intentionally implements only `--help` and `--version`.
+
+## Development version
+
+Current development version: **0.0.1-dev**.
+
+Do not call an early experimental input grab `1.0`. Versioning should remain explicitly developmental until the safety and compatibility model is established.
+
+## First ten checkpoints
+
+`ROADMAP.md` is canonical for checkpoint scope. In short:
+
+1. input reconnaissance;
+2. virtual pointer feasibility;
+3. transparent pass-through;
+4. safe exclusive capture;
+5. smoothing engine v1;
+6. complete wheel semantics;
+7. daemon/permissions/configuration;
+8. desktop/application compatibility;
+9. feel/latency/default tuning;
+10. hardening and first release.
+
+## Definition of done for each checkpoint
+
+A checkpoint should not be declared complete merely because the happy-path demo works. Before moving on:
+
+- tests/evidence for the checkpoint's explicit guarantee must exist;
+- new failure modes discovered during development must be documented or regression-tested;
+- README/website wording must not claim capabilities that have not landed;
+- ROADMAP/HANDOVER should be reconciled if architecture or scope changed materially;
+- disposable build artifacts should not be committed.
+
+## Immediate next action
+
+Start **Checkpoint 1 only**.
+
+Implement a read-only diagnostic mode that enumerates candidate mouse devices and can print/record wheel-capable evdev event streams. Do not grab devices and do not inject events yet. The output should be useful enough to collect a small corpus from several real mice and distinguish coarse from high-resolution wheel behaviour.
