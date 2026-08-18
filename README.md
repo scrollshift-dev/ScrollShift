@@ -42,3 +42,15 @@ Requires a C++20 compiler and CMake 3.20+. Input dependencies such as libevdev w
 - **Keep the core small.** First make one wheel detent feel excellent everywhere. Add configuration and UI only when the underlying semantics are stable.
 
 See [`ROADMAP.md`](ROADMAP.md) for the first ten checkpoints and [`HANDOVER.md`](HANDOVER.md) for the current development state.
+
+## Read-only input reconnaissance
+
+Checkpoint 1 adds non-invasive diagnostics. These commands **do not grab devices or inject input**.
+
+```bash
+./build/smoothwheel devices
+./build/smoothwheel inspect /dev/input/eventX
+./build/smoothwheel monitor /dev/input/eventX --record mouse.trace
+```
+
+`monitor` prints wheel events and packet boundaries while `--record` stores the complete raw event stream for deterministic fixture-driven development. Access to `/dev/input/event*` is commonly restricted; during development, run the diagnostic with sufficient read permission rather than changing device permissions globally.

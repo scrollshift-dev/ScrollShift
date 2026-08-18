@@ -1,25 +1,27 @@
 cmake_minimum_required(VERSION 3.20)
 project(SmoothWheel VERSION 0.0.1 LANGUAGES CXX)
-
 option(SMOOTHWHEEL_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
-add_executable(smoothwheel src/main.cpp)
-target_compile_features(smoothwheel PRIVATE cxx_std_20)
-target_include_directories(smoothwheel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_library(smoothwheel_core src/input.cpp)
+target_compile_features(smoothwheel_core PUBLIC cxx_std_20)
+target_include_directories(smoothwheel_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(smoothwheel_core PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>)
 
-target_compile_options(smoothwheel PRIVATE
-  $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>
-)
+add_executable(smoothwheel src/main.cpp)
+target_link_libraries(smoothwheel PRIVATE smoothwheel_core)
+target_compile_options(smoothwheel PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>)
 if(SMOOTHWHEEL_WARNINGS_AS_ERRORS)
-  target_compile_options(smoothwheel PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Werror>
-  )
+  target_compile_options(smoothwheel_core PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Werror>)
+  target_compile_options(smoothwheel PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Werror>)
 endif()
 
 include(CTest)
 if(BUILD_TESTING)
+  add_executable(smoothwheel_input_tests tests/input_tests.cpp)
+  target_link_libraries(smoothwheel_input_tests PRIVATE smoothwheel_core)
   add_test(NAME cli_help COMMAND smoothwheel --help)
   add_test(NAME cli_version COMMAND smoothwheel --version)
+  add_test(NAME cli_devices COMMAND smoothwheel devices)
+  add_test(NAME input_unit COMMAND smoothwheel_input_tests)
 endif()
-
 install(TARGETS smoothwheel RUNTIME DESTINATION bin)

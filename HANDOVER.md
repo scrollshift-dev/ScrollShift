@@ -2,7 +2,7 @@
 
 ## Canonical state
 
-This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. It currently contains only a C++20/CMake CLI scaffold and project documentation. **No input interception, uinput device creation or smoothing is implemented yet.**
+This repository was initialized on 2026-08-18 as the canonical SmoothWheel program repository. Checkpoint 1 read-only input reconnaissance is implemented and awaiting capture from a real mouse. The CLI can enumerate readable evdev devices, inspect wheel capabilities, monitor events, and record complete event traces. **No exclusive input grab, uinput device creation or smoothing is implemented yet.**
 
 The paired website repository is `SmoothWheel/SmoothWheel.github.io`. It is built with Nift and intentionally presents SmoothWheel as early development until the feasibility and safety checkpoints are complete.
 
@@ -164,7 +164,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-At this checkpoint the binary intentionally implements only `--help` and `--version`.
+The binary now implements `devices`, `inspect DEVICE`, and read-only `monitor DEVICE [--all] [--record FILE]` in addition to `--help` and `--version`. The event-trace parser/serializer is unit tested and the build passes with warnings treated as errors.
 
 ## Development version
 
@@ -199,6 +199,6 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Start **Checkpoint 1 only**.
+Finish **Checkpoint 1 hardware evidence** before starting Checkpoint 2.
 
-Implement a read-only diagnostic mode that enumerates candidate mouse devices and can print/record wheel-capable evdev event streams. Do not grab devices and do not inject events yet. The output should be useful enough to collect a small corpus from several real mice and distinguish coarse from high-resolution wheel behaviour.
+Run `smoothwheel devices` on a real Linux desktop, select the wheel-capable physical mouse, then run `smoothwheel monitor /dev/input/eventX --record mouse.trace` and exercise several slow detents, rapid detents, direction reversals, and horizontal/free-spin behaviour if the device supports it. Preserve the resulting trace as a regression fixture after reviewing it for device-specific metadata/privacy. Do not grab devices and do not inject events yet.
