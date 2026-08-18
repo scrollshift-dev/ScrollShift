@@ -7,6 +7,7 @@ namespace smoothwheel {
 struct VelocityConfig {
   double slow_interval_ms{420.0};
   double fast_interval_ms{45.0};
+  double min_multiplier{1.0};
   double max_multiplier{5.0};
   double smoothing{0.35};
   double curve_power{1.0};

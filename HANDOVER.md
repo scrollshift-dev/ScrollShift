@@ -213,7 +213,7 @@ A checkpoint should not be declared complete merely because the happy-path demo 
 
 ## Immediate next action
 
-Re-test the revised `balanced` profile on the same real mouse. Its low/medium response is intentionally kept near the previously-liked shape while its hard-spin ceiling is raised from 4x to 6x. Compare ordinary slow scrolling and deliberate fast spins; only if the upper-end still feels constrained should the ceiling move again. Also compare `fast` as a reference. The expected distinction should be obvious in traversal speed, not subtle visual smoothness. If acceleration is useful, keep cadence mapping as the core and only then add bounded momentum/decay. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
+Re-test the revised `balanced` profile on the same real mouse. Hardware feedback now says the direction is “pretty damn good” but should be slower when deliberately slow and faster when spun hard. Balanced therefore spans roughly 0.45x to 9x with a steeper upper curve. Check three things separately: isolated/slow detents should feel more precise than native scrolling, ordinary cadence should remain comfortable, and a hard spin should traverse much farther than before. Reversal should immediately return to the precision end. If this dynamic range feels right, freeze the cadence curve provisionally before deciding whether any momentum/decay is desirable. Also perform a deliberate forced-process-death recovery test before declaring CP4 complete.
 
 ## Product-direction update after CP2
 
@@ -234,8 +234,8 @@ CP3 has now passed its real-hardware gate: movement, ordinary buttons/scrolling,
 Profiles are intentionally exaggerated enough to distinguish the product direction:
 
 - `precision`: maximum 2x;
-- `balanced`: maximum 6x, with a shaped upper-end curve so low/moderate input stays close to the original balanced feel;
+- `balanced`: approximately 0.45x to 9x, with a steep curve that expands both precision and hard-spin traversal;
 - `fast`: maximum 7x;
 - `aggressive`: maximum 10x.
 
-These are experimental tuning presets, not frozen user configuration. Real-hardware feedback found the original balanced curve pleasant but its 4x ceiling too low, so balanced now uses a 6x ceiling plus a curve exponent to bias the extra gain toward hard spins rather than making the entire response more aggressive. Slow/isolated detents remain at 1x; same-direction rapid input increases the multiplier; reversal resets immediately. Momentum and post-input decay are not implemented yet.
+These are experimental tuning presets, not frozen user configuration. Real-hardware feedback first found the balanced curve pleasant but its upper ceiling too low, then found the 6x version still too fast at the slow end and too constrained at the fast end. Balanced now uses a 0.45x floor, 9x ceiling and stronger curve exponent. The packet transformer also carries a fractional legacy-wheel remainder, allowing sub-detent high-resolution output without spuriously emitting a full `REL_WHEEL` detent every packet. Same-direction rapid input increases the multiplier; reversal resets immediately and clears opposing fractional legacy carry. Momentum and post-input decay are not implemented yet.

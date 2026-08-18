@@ -63,7 +63,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - estimate physical wheel cadence in normalized `v120` units;
 - map cadence to an explicit acceleration multiplier;
 - reset acceleration immediately on direction reversal;
-- keep slow isolated detents at baseline precision;
+- allow slow isolated detents to run below baseline for finer precision;
 - maintain velocity/momentum state only where it improves responsiveness;
 - emit fixed-step or time-based fractional output;
 - implement decay and rapid-input accumulation;
@@ -71,7 +71,7 @@ The first development phase is risk-first. The project should prove the Linux in
 - handle reversal without long unwanted tails;
 - unit-test timing, conservation, cancellation and determinism using a fake clock.
 
-**Current state:** the pure cadence estimator and a packet-level wheel transformer are implemented and deterministic. The transformer keeps non-wheel events untouched, treats each `SYN_REPORT` packet as the transformation unit, scales paired legacy/high-resolution wheel representations coherently, and exposes deliberately distinct `precision`, `balanced`, `fast`, and `aggressive` profiles. The first real-hardware acceleration tuning gate found the balanced shape pleasant but the 4x ceiling too low; balanced now uses a shaped 6x upper end while preserving gentler low-speed response; momentum/decay is intentionally deferred until cadence-based acceleration is judged useful.
+**Current state:** the pure cadence estimator and a packet-level wheel transformer are implemented and deterministic. The transformer keeps non-wheel events untouched, treats each `SYN_REPORT` packet as the transformation unit, scales paired legacy/high-resolution wheel representations coherently, and exposes deliberately distinct `precision`, `balanced`, `fast`, and `aggressive` profiles. Two real-hardware tuning gates established that the overall balanced shape is useful but needs more dynamic range in both directions. Balanced now targets roughly 0.45x at isolated/very slow input and 9x at hard-spin saturation, with a steeper curve that keeps the middle controlled. Because sub-1x motion cannot be represented honestly by independently rounding the legacy `REL_WHEEL` companion, the packet transformer now accumulates fractional legacy distance while emitting fractional `REL_WHEEL_HI_RES` immediately. Momentum/decay remains intentionally deferred until the cadence curve itself feels right.
 
 **Exit evidence:** the complete motion model can be exhaustively tested from event fixtures without `/dev/input` or `/dev/uinput`.
 

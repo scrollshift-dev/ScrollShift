@@ -6,8 +6,8 @@
 namespace smoothwheel {
 VelocityEstimator::VelocityEstimator(VelocityConfig config) : config_(config) {
   if (!(config_.fast_interval_ms > 0.0 && config_.slow_interval_ms > config_.fast_interval_ms &&
-        config_.max_multiplier >= 1.0 && config_.smoothing > 0.0 && config_.smoothing <= 1.0 &&
-        config_.curve_power > 0.0))
+        config_.min_multiplier > 0.0 && config_.max_multiplier >= config_.min_multiplier &&
+        config_.smoothing > 0.0 && config_.smoothing <= 1.0 && config_.curve_power > 0.0))
     throw std::invalid_argument("invalid velocity configuration");
 }
 
@@ -16,7 +16,7 @@ VelocitySample VelocityEstimator::observe(std::chrono::microseconds timestamp, i
   VelocitySample out;
   if (!have_previous_ || direction != previous_direction_ || timestamp <= previous_) {
     filtered_ = 0.0;
-    out.multiplier = 1.0;
+    out.multiplier = config_.min_multiplier;
   } else {
     out.interval_ms = std::chrono::duration<double, std::milli>(timestamp - previous_).count();
     const double span = config_.slow_interval_ms - config_.fast_interval_ms;
@@ -24,7 +24,7 @@ VelocitySample VelocityEstimator::observe(std::chrono::microseconds timestamp, i
     filtered_ += config_.smoothing * (out.instantaneous - filtered_);
     out.filtered = filtered_;
     const double shaped = std::pow(filtered_, config_.curve_power);
-    out.multiplier = 1.0 + shaped * (config_.max_multiplier - 1.0);
+    out.multiplier = config_.min_multiplier + shaped * (config_.max_multiplier - config_.min_multiplier);
   }
   previous_ = timestamp;
   previous_direction_ = direction;

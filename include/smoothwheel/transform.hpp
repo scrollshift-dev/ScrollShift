@@ -25,6 +25,8 @@ class WheelPacketTransformer {
  private:
   VelocityEstimator vertical_;
   VelocityEstimator horizontal_;
+  double vertical_legacy_remainder_{0.0};
+  double horizontal_legacy_remainder_{0.0};
 };
 
 }  // namespace smoothwheel

@@ -103,4 +103,4 @@ After CP3 transparent pass-through was validated on real hardware, SmoothWheel a
 sudo ./build/smoothwheel accelerate /dev/input/eventX --profile balanced --seconds 20
 ```
 
-This is intentionally time-bounded and developmental. It grabs the selected physical pointer only after creating a virtual replacement. Slow/isolated wheel input remains baseline while rapid same-direction wheel cadence accelerates according to the selected profile.
+This is intentionally time-bounded and developmental. It grabs the selected physical pointer only after creating a virtual replacement. Slow/isolated wheel input can deliberately fall below native detent speed while rapid same-direction cadence accelerates sharply. Balanced currently spans roughly 0.45x to 9x; the legacy wheel companion is accumulated fractionally so sub-detent high-resolution output does not falsely emit a full legacy detent each packet.

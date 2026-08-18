@@ -6,26 +6,40 @@
 int main() {
   using namespace smoothwheel;
   using namespace std::chrono_literals;
-  VelocityEstimator v;
-  auto s = v.observe(0us, 1); assert(s.multiplier == 1.0);
-  s = v.observe(500ms, 1); assert(s.multiplier == 1.0);
-  v.reset(); v.observe(0us, 1);
-  double previous = 1.0;
-  for (int i=1;i<=8;++i) { s=v.observe(std::chrono::milliseconds(i*35),1); assert(s.multiplier >= previous); previous=s.multiplier; }
-  assert(s.multiplier > 4.0 && s.multiplier <= 5.0);
-  auto reversed=v.observe(300ms,-1); assert(reversed.multiplier == 1.0);
-  auto after_reverse=v.observe(335ms,-1); assert(after_reverse.multiplier > 1.0);
-  auto nonmonotonic=v.observe(100ms,-1); assert(nonmonotonic.multiplier == 1.0);
 
-  VelocityConfig shaped_cfg{420.0, 45.0, 6.0, 0.38, 1.45};
-  VelocityEstimator shaped(shaped_cfg);
+  VelocityConfig cfg{520.0, 35.0, 0.45, 9.0, 0.42, 2.10};
+  VelocityEstimator v(cfg);
+  auto s = v.observe(0us, 1);
+  assert(s.multiplier == 0.45);
+  s = v.observe(600ms, 1);
+  assert(s.multiplier == 0.45);
+
+  v.reset();
+  v.observe(0us, 1);
+  double previous = 0.45;
+  for (int i = 1; i <= 10; ++i) {
+    s = v.observe(std::chrono::milliseconds(i * 35), 1);
+    assert(s.multiplier >= previous);
+    previous = s.multiplier;
+  }
+  assert(s.multiplier > 8.5 && s.multiplier <= 9.0);
+
+  auto reversed = v.observe(400ms, -1);
+  assert(reversed.multiplier == 0.45);
+  auto after_reverse = v.observe(435ms, -1);
+  assert(after_reverse.multiplier > 0.45);
+  auto nonmonotonic = v.observe(100ms, -1);
+  assert(nonmonotonic.multiplier == 0.45);
+
+  VelocityEstimator shaped(cfg);
   shaped.observe(0us, 1);
-  auto moderate = shaped.observe(300ms, 1);
-  assert(moderate.multiplier > 1.1 && moderate.multiplier < 1.4);
-  auto mid = shaped.observe(520ms, 1);
-  assert(mid.multiplier > 1.5 && mid.multiplier < 2.1);
+  auto slow = shaped.observe(450ms, 1);
+  assert(slow.multiplier > 0.45 && slow.multiplier < 0.55);
+  auto moderate = shaped.observe(700ms, 1); // 250 ms after prior sample
+  assert(moderate.multiplier > 0.8 && moderate.multiplier < 1.5);
   VelocitySample hard{};
-  for (int i = 1; i <= 12; ++i) hard = shaped.observe(520ms + std::chrono::milliseconds(i * 45), 1);
-  assert(hard.multiplier > 5.8 && hard.multiplier <= 6.0);
+  for (int i = 1; i <= 12; ++i) hard = shaped.observe(700ms + std::chrono::milliseconds(i * 35), 1);
+  assert(hard.multiplier > 8.5 && hard.multiplier <= 9.0);
+
   std::cout << "velocity tests passed\n";
 }
