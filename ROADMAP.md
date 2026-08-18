@@ -15,7 +15,7 @@ The first development phase is risk-first. The project should prove the Linux in
 
 **Exit evidence:** Complete. SmoothWheel identifies and inspects wheel-capable event nodes, records complete input streams read-only, and includes a permanent fixture derived from real hardware evidence.
 
-## Checkpoint 2 — Virtual pointer feasibility spike
+## Checkpoint 2 — Virtual pointer feasibility spike 🚧
 
 **Goal:** prove that a uinput device can produce useful fine-grained wheel motion through the normal desktop stack.
 
@@ -25,6 +25,8 @@ The first development phase is risk-first. The project should prove the Linux in
 - inspect the resulting libinput `v120` events;
 - test at least a browser, terminal/editor and native toolkit application;
 - record whether applications actually render the stream smoothly.
+
+**Current state:** the temporary uinput pointer and deterministic experiment presets are implemented and unit-tested. Real desktop/application behaviour is the remaining decision gate.
 
 **Decision gate:** if fine-grained uinput wheel output is coalesced or quantized badly by the desktop/application stack, stop and reassess the architecture before proceeding.
 

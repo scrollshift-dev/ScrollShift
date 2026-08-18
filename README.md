@@ -54,3 +54,42 @@ Checkpoint 1 adds non-invasive diagnostics. These commands **do not grab devices
 ```
 
 `monitor` prints wheel events and packet boundaries while `--record` stores the complete raw event stream for deterministic fixture-driven development. Access to `/dev/input/event*` is commonly restricted; during development, run the diagnostic with sufficient read permission rather than changing device permissions globally.
+
+## Development build
+
+The shortest development path is:
+
+```bash
+make
+make test
+```
+
+This is a thin convenience wrapper around CMake. The equivalent explicit commands are:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSMOOTHWHEEL_WARNINGS_AS_ERRORS=ON
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+### Checkpoint 2 virtual-wheel experiment
+
+Checkpoint 2 creates a **temporary virtual uinput pointer only**. It does not grab, disable, or modify the physical mouse. List the available diagnostic gestures with:
+
+```bash
+./build/smoothwheel experiment --list
+```
+
+Preview exactly what a preset would emit without touching `/dev/uinput`:
+
+```bash
+./build/smoothwheel experiment fine16 --dry-run
+```
+
+Running a real experiment usually requires permission to open `/dev/uinput`, so during development it may be run with `sudo`. The command waits three seconds before emitting a single detent-equivalent gesture so the pointer can be moved over the target application:
+
+```bash
+sudo ./build/smoothwheel experiment fine16
+```
+
+These experiments are intentionally narrow feasibility probes. They are not yet the SmoothWheel smoothing algorithm.

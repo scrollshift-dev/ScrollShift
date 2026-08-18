@@ -50,6 +50,14 @@ On 2026-08-18 a real 2.4G Wireless Mouse (USB ID `3151:402d`) was inspected on L
 
 The same USB receiver also exposes a separate Consumer Control event node with horizontal-wheel capabilities but no relative pointer axes. This is evidence that capability presence alone is insufficient for future automatic device selection: physical-device grouping and pointer classification must be considered before exclusive capture.
 
+## Current frontier: Checkpoint 2
+
+A non-grabbing uinput feasibility spike is implemented. `smoothwheel experiment` creates a temporary virtual pointer with vertical/horizontal low-resolution and high-resolution wheel capabilities, emits one controlled gesture, then removes the device. The physical mouse is never grabbed. The gesture planner is deterministic and tested without requiring `/dev/uinput`.
+
+Available presets intentionally compare a conventional detent against 8/16/24 fractional high-resolution reports and a diagnostic high-resolution-only variant. Each fractional paired preset conserves exactly 120 v120 units and emits one matching legacy detent at the accumulated boundary. This follows the kernel wheel model while allowing us to test what the real desktop actually consumes.
+
+The runtime uinput path cannot be meaningfully validated in the development container because it does not expose `/dev/uinput`; real-desktop validation is therefore the current decision gate.
+
 ## Most important unresolved question
 
 Do fine-grained high-resolution wheel events emitted through a virtual uinput pointer produce consistently smooth motion across the real desktop/application stack?
