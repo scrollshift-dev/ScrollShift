@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ScrollShift VERSION 0.0.1 LANGUAGES CXX)
+project(ScrollShift VERSION 0.1.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 option(SCROLLSHIFT_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 set(SCROLLSHIFT_SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/lib/systemd/system" CACHE PATH "systemd system unit directory")

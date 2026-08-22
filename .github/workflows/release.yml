@@ -1,0 +1,90 @@
+name: Release artifacts
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x86_64
+          - runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke test
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j2
+          ./build/scrollshift --version
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Stage archive
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$(./build/scrollshift --version | sed -E 's/^scrollshift ([^ ]+)$/\1/')" = "$version"
+          root="scrollshift-$version-${{ matrix.platform }}"
+          mkdir "$root"
+          cp build/scrollshift README.md LICENSE "$root/"
+          cp -r packaging "$root/"
+          tar -czf "$root.tar.gz" "$root"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: scrollshift-*.tar.gz
+
+  installer-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate installer
+        run: |
+          sh -n packaging/install.sh
+
+  publish:
+    needs: [linux, installer-preflight]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: dist
+        run: sha256sum scrollshift-* > SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "GitHub release $GITHUB_REF_NAME already exists; leaving its published assets unchanged"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
+          fi
+
+  installer-public-smoke:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify public installer
+        run: |
+          curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL https://scrollshift-dev.github.io/install -o /tmp/scrollshift-install.sh
+          cmp packaging/install.sh /tmp/scrollshift-install.sh
+          sh -n /tmp/scrollshift-install.sh
+      - name: Install tagged release through public installer
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          install_dir="$RUNNER_TEMP/scrollshift-bin"
+          SCROLLSHIFT_VERSION="$version" SCROLLSHIFT_INSTALL_DIR="$install_dir" sh /tmp/scrollshift-install.sh
+          test "$("$install_dir/scrollshift" --version | sed -E 's/^scrollshift ([^ ]+)$/\1/')" = "$version"

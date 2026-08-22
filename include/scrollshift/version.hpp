@@ -3,5 +3,5 @@
 #include <string_view>
 
 namespace scrollshift {
-inline constexpr std::string_view kVersion = "0.0.1-dev";
+inline constexpr std::string_view kVersion = "0.1.0";
 }
