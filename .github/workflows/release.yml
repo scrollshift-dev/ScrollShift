@@ -74,6 +74,7 @@ jobs:
     needs: [linux, installer-preflight, website-parity]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -91,17 +92,20 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             # An existing release is accepted only when it is already exactly
-            # usable by the public verified installer: both architecture
-            # archives AND the published SHA256SUMS, whose checksums match the
-            # published archives, byte-identical to the candidate manifest.
-            # Anything else fails loudly; published releases are never
-            # auto-repaired.
+            # usable by the public verified installer. Two layers of invariants:
+            #   1. the complete published asset-name set is exactly the expected
+            #      public set (the two archives plus SHA256SUMS), checked by
+            #      verify_release.sh --published against the full GitHub asset
+            #      list, so an unexpected/stale extra asset is rejected;
+            #   2. the three expected assets' contents satisfy
+            #      scripts/verify_release.sh and the published manifest is
+            #      byte-identical to the candidate manifest.
+            # Published releases are never auto-repaired; any inconsistency
+            # fails loudly.
+            gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' | sort > /tmp/published-names
+            sh scripts/verify_release.sh --published "$version" "$GITHUB_REF_NAME" /tmp/published-names
             rm -rf /tmp/published && mkdir -p /tmp/published
             for asset in "scrollshift-$version-linux-x86_64.tar.gz" "scrollshift-$version-linux-aarch64.tar.gz" "SHA256SUMS"; do
-              if ! gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' | grep -qx "$asset"; then
-                echo "Existing release is missing $asset; refusing to accept a partial release" >&2
-                exit 1
-              fi
               gh release download "$GITHUB_REF_NAME" --pattern "$asset" --clobber -D /tmp/published
             done
             sh scripts/verify_release.sh "$version" /tmp/published

@@ -114,14 +114,18 @@ fix the problem before tagging where possible, and retain exact evidence.
    aarch64, built with `SCROLLSHIFT_WARNINGS_AS_ERRORS=ON`), `installer-preflight`,
    and `website-parity` (public website scripts byte-identical to `packaging/`)
    must all succeed before the GitHub release is created; the `publish` job
-   verifies the candidate asset set with `scripts/verify_release.sh` (both
-   architecture archives plus a structurally valid `SHA256SUMS` with exactly one
-   matching entry per archive) before creating the release. A rerun against an
-   already-existing release is accepted only when that release already contains
-   the complete expected asset set — both archives **and** the published
-   `SHA256SUMS` — whose checksums match the published archives and whose
-   manifest is byte-identical to the candidate manifest; any missing, extra or
-   inconsistent asset fails loudly and is never auto-repaired.
+   checks out the repository and verifies the candidate asset set with
+   `scripts/verify_release.sh` (both architecture archives plus a structurally
+   valid `SHA256SUMS` with exactly one matching entry per archive) before
+   creating the release. A rerun against an already-existing release is accepted
+   only when two layers hold: the complete published GitHub asset-name set is
+   exactly the expected public set (both archives and the published
+   `SHA256SUMS`; only GitHub's auto-attached `<tag>.tar.gz`/`<tag>.zip` source
+   archives are tolerated, any other extra asset is rejected via
+   `verify_release.sh --published`), and the three assets' contents satisfy
+   `verify_release.sh` with the published manifest byte-identical to the
+   candidate manifest. Any missing, extra or inconsistent asset fails loudly and
+   is never auto-repaired.
    After publication, require `installer-public-smoke` to pass; this proves the
    live website installer matches the tag, verifies the release checksum, and
    installs the tagged release.
