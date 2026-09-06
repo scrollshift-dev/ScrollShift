@@ -63,7 +63,7 @@ The recommended release install is:
 curl -fsSL https://scrollshift.dev/install.sh | sh
 ```
 
-The installer verifies the selected GitHub release against `SHA256SUMS`, then invokes ScrollShift's own privileged service installer. The CLI copies the running executable atomically to `/usr/local/bin/scrollshift`, writes a managed `/etc/systemd/system/scrollshift.service`, reloads systemd, and enables the service. On a fresh install it creates `/etc/scrollshift/config.conf` in automatic-discovery mode and starts immediately. ScrollShift classifies input devices using udev/libinput metadata when available, ignores touchpads/touchscreens, and automatically attaches conventional wheel mice as they appear. No `/dev/input/eventN` configuration is required.
+The installer verifies the selected GitHub release against `SHA256SUMS`, then invokes ScrollShift's own privileged service installer. The CLI copies the running executable atomically to `/usr/local/bin/scrollshift`, writes a managed `/etc/systemd/system/scrollshift.service`, reloads systemd, and enables the service. On a fresh install it creates `/etc/scrollshift/config.conf` in automatic-discovery mode and starts immediately. ScrollShift classifies input devices using udev/libinput metadata when available, ignores touchpads, touchscreens, joysticks, tablets and keyboard auxiliary nodes, and automatically attaches conventional wheel mice as they appear. When classification metadata is missing it uses a deliberately conservative evdev capability check so a non-mouse relative device is not mistaken for a mouse. No `/dev/input/eventN` configuration is required.
 
 The normal first-run path is therefore just:
 
@@ -104,14 +104,12 @@ The current service remains a root system service because evdev capture and uinp
 Generated configuration is intentionally small:
 
 ```ini
-device_vendor = 0x3151
-device_product = 0x402d
-device_name = Example Wireless Mouse
+mode = auto
 profile = balanced
 reconnect_ms = 1000
 ```
 
-Do not hand-edit event-node numbers into configuration. `device_vendor`, `device_product`, and `device_name` are the persistent selector.
+`mode = auto` is the default: ScrollShift discovers conventional wheel mice automatically using udev input classification when available, and only falls back to conservative evdev capability checks when classification metadata is missing. Touchpads, touchscreens, joysticks, tablets and keyboard auxiliary nodes are never selected. Do not hand-edit event-node numbers into configuration. For unusual hardware, `sudo scrollshift configure /dev/input/eventX` writes a `mode = device` override that persists stable vendor/product/name identity, never an event-node path.
 
 ## Diagnostics and reconnaissance
 

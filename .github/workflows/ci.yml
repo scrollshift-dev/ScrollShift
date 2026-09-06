@@ -20,3 +20,16 @@ jobs:
         run: cmake --build build -j2
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Shell syntax and lint
+        run: |
+          sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh
+          shellcheck packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh
+      - name: Installer checksum failure cases
+        run: sh -eu tests/installer_checksum_tests.sh

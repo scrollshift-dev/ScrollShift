@@ -17,7 +17,8 @@ int main() {
 
   DeviceInfo real;
   real.vendor=0x3151; real.product=0x402d; real.name="2.4G Wireless Mouse";
-  real.relative_pointer=true; real.wheel=true; real.hi_res_wheel=true;
+  real.relative_pointer=true; real.has_rel_x=true; real.has_rel_y=true;
+  real.wheel=true; real.hi_res_wheel=true; real.mouse_button=true;
   assert(matches_selector(real, config->device));
   assert(is_capture_candidate(real));
   assert(is_automatic_mouse_candidate(real));

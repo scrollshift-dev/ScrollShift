@@ -184,7 +184,7 @@ The binary now implements read-only discovery/trace tooling, temporary relay/acc
 
 ## Development version
 
-Current development version: **0.0.1-dev**.
+Current development version: **0.1.0** (`scrollshift --version`; also the CMake project version). Version identity is a deliberate pre-release 0.x until the safety and compatibility model is demonstrated at the first-release hardware gates.
 
 Do not call an early experimental input grab `1.0`. Versioning should remain explicitly developmental until the safety and compatibility model is established.
 
@@ -316,3 +316,26 @@ Safety invariants learned from the Gantry Go service work and retained here:
 - the unit keeps the previous fail-open lifecycle policy (`Restart=on-failure`, `RestartPreventExitStatus=2`, bounded stop timeout) and adds systemd sandboxing compatible with evdev/uinput access.
 
 The website scripts are thin distribution entry points. `install.sh` and `download.sh` fail closed unless exactly one structurally valid checksum entry matches the selected release archive and the archive bytes verify. The shell installer does not hand-author systemd state; it delegates that to `scrollshift service install`.
+
+## 2026-09-06 pre-release correction pass
+
+An adversarial pre-release review (the "ScrollShift pre-release review" findings) drove a focused hardening pass ahead of v0.1.0. The review accepted the capture/transform core, installer verification, config parsing and current systemd hardening as sound, and the corrections below address the substantive findings without weakening the service ownership invariant.
+
+**Automatic classifier (release blocker addressed).** The capability fallback could previously mistake an unclassified non-mouse relative device (joystick, drawing tablet in relative mode, another tool's virtual pointer, keyboard auxiliary node) for a mouse. Classification now:
+
+- recognizes the full relevant `ID_INPUT_*` set (mouse, touchpad, touchscreen, joystick, tablet, tablet-pad, pointing-stick, keyboard, plus key/switch/accelerometer tags) and treats any recognized classification as authoritative — a device udev says is a joystick/tablet/etc. can no longer be reclassified by the fallback;
+- trusts explicit mouse/pointing-stick classification when present;
+- requires the capability fallback to show a full pointer signature: both `REL_X` and `REL_Y`, a vertical wheel (`REL_WHEEL`/`REL_WHEEL_HI_RES`), a `BTN_MOUSE`-family button, no `ABS_X`/`ABS_Y` (tablet/touchpad/joystick-style absolute motion), and not `BUS_VIRTUAL` (unrelated virtual devices). Harmless absolute capabilities such as `ABS_WHEEL` do not trip the exclusion;
+- is deterministic-testable through an injectable udev-data root plus a comprehensive pure classifier matrix.
+
+A false negative on unusual hardware is preferred over grabbing a non-mouse device; users retain `scrollshift configure DEVICE` as the explicit override.
+
+**Managed service-unit upgrade handling (issue accepted, proposed weakening rejected).** Ownership remains exact-template based: a unit is managed only when it byte-for-byte matches the exact current template or one of the exact known historical ScrollShift-generated templates (the pre-release `packaging/scrollshift.service.in` output and the immediate-prior CLI unit with the managed marker but without the format-marker line). Marker presence alone is still insufficient — a marker-bearing but modified body is refused for install/uninstall/start/stop. Known historical units migrate transactionally to the current format, and a failed `daemon-reload` rolls the previous unit back. No `--force` escape was added.
+
+**Release publication integrity.** Release builds now use `SCROLLSHIFT_WARNINGS_AS_ERRORS=ON`; the workflow verifies the expected archive set and `SHA256SUMS` before creating a release; website installer parity is checked before publication; and an existing release is only treated as successfully published when it has the complete expected asset set with matching checksums (a partial release fails loudly instead of being silently left in place). The post-publication live installer smoke test remains.
+
+**EVIOCGRAB contention backoff.** The auto-mode daemon now applies bounded exponential backoff (base `reconnect_ms`, capped at 30 s) per still-present device after repeated grab/session failures, resets after a successful session and on device reappearance, keeps devices independent (a permanently busy device does not penalize another mouse), suppresses repeated identical failure logging, and remains prompt on SIGTERM.
+
+**Tests added.** Pure classifier matrix and injectable udev-data parsing (`classifier_unit`), service unit ownership/migration matrix plus non-root mutation refusal (`service_unit`), auto-mode zero-mouse lifecycle and backoff policy checks (`daemon_lifecycle_unit`), and installer checksum failure cases (missing/duplicate/malformed/wrong/missing-manifest) plus shellcheck in CI.
+
+**Still requiring real hardware before first release:** auto discovery selecting a real mouse, touchpad and touchscreen remaining completely unaffected, start-with-no-mouse then hotplug, active mouse unplug/replug, event-node renumbering, service start/stop/restart, reboot with the service enabled, forced `SIGKILL` fail-open recovery, composite-receiver pointer-node-only capture, two simultaneous mice including removal of one, and restart while scrolling. These are the RELEASE.md gates; do not claim them passed until exercised.

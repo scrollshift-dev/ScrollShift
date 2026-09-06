@@ -19,14 +19,23 @@ struct DeviceInfo {
   std::uint16_t version{};
   bool readable{};
   bool relative_pointer{};
+  bool has_rel_x{};
+  bool has_rel_y{};
   bool wheel{};
   bool horizontal_wheel{};
   bool hi_res_wheel{};
   bool hi_res_horizontal_wheel{};
+  bool abs_axes{};
+  bool mouse_button{};
   bool udev_classified{};
   bool is_mouse{};
   bool is_touchpad{};
   bool is_touchscreen{};
+  bool is_joystick{};
+  bool is_tablet{};
+  bool is_tablet_pad{};
+  bool is_pointingstick{};
+  bool is_keyboard{};
 };
 
 struct RecordedEvent {
@@ -50,8 +59,12 @@ struct TraceSummary {
   std::int64_t horizontal_hi_res_total{};
 };
 
-std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path);
-std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root = "/dev/input");
+std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path,
+                                               const std::filesystem::path& udev_data_root = "/run/udev/data");
+std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root = "/dev/input",
+                                               const std::filesystem::path& udev_data_root = "/run/udev/data");
+void apply_udev_classification(std::uint32_t major, std::uint32_t minor,
+                               const std::filesystem::path& data_root, DeviceInfo& device);
 std::string describe_device(const DeviceInfo& device);
 std::string event_type_name(std::uint16_t type);
 std::string event_code_name(std::uint16_t type, std::uint16_t code);

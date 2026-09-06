@@ -5,6 +5,7 @@
 #include <cctype>
 #include <fstream>
 #include <iomanip>
+#include <linux/input.h>
 #include <sstream>
 
 #include "scrollshift/transform.hpp"
@@ -143,11 +144,25 @@ bool is_capture_candidate(const DeviceInfo& device) {
 
 bool is_automatic_mouse_candidate(const DeviceInfo& device) {
   if (!is_capture_candidate(device)) return false;
-  if (device.is_touchpad || device.is_touchscreen) return false;
-  if (device.udev_classified) return device.is_mouse;
-  // Conservative dependency-free fallback for systems without udev metadata:
-  // kernel touchpads are normally absolute devices, while wheel mice expose REL_X/REL_Y.
-  return device.relative_pointer;
+  // Known non-mouse input classes are never eligible, regardless of metadata.
+  if (device.is_touchpad || device.is_touchscreen || device.is_joystick || device.is_tablet ||
+      device.is_tablet_pad) return false;
+  if (device.udev_classified) {
+    // Trust explicit udev/libinput-style classification when present. Mouse-like
+    // classes (mouse, pointing stick) are acceptable; everything else is refused
+    // rather than falling through to the capability fallback. A touchpad/touchscreen
+    // tagged alongside ID_INPUT_MOUSE is excluded above.
+    return device.is_mouse || device.is_pointingstick;
+  }
+  // Capability-only fallback for systems where udev metadata is genuinely
+  // unavailable or incomplete. Be conservative: prefer a false negative on
+  // unusual hardware over grabbing a non-mouse device. Users retain the
+  // explicit `configure DEVICE` override.
+  if (device.bus == BUS_VIRTUAL) return false;          // unrelated virtual devices
+  if (device.abs_axes) return false;                    // tablet/touchpad/joystick-style absolute motion
+  return device.has_rel_x && device.has_rel_y &&        // full relative pointer signature
+         (device.wheel || device.hi_res_wheel) &&       // vertical wheel
+         device.mouse_button;                           // conventional mouse buttons
 }
 
 std::vector<DeviceInfo> automatic_mouse_candidates(const std::vector<DeviceInfo>& devices) {

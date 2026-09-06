@@ -63,6 +63,14 @@ if(BUILD_TESTING)
   add_executable(scrollshift_daemon_tests tests/daemon_tests.cpp)
   target_link_libraries(scrollshift_daemon_tests PRIVATE scrollshift_core)
   add_test(NAME daemon_lifecycle_unit COMMAND scrollshift_daemon_tests)
+
+  add_executable(scrollshift_classifier_tests tests/classifier_tests.cpp)
+  target_link_libraries(scrollshift_classifier_tests PRIVATE scrollshift_core)
+  add_test(NAME classifier_unit COMMAND scrollshift_classifier_tests)
+
+  add_executable(scrollshift_service_tests tests/service_tests.cpp)
+  target_link_libraries(scrollshift_service_tests PRIVATE scrollshift_core)
+  add_test(NAME service_unit COMMAND scrollshift_service_tests)
 endif()
 
 install(TARGETS scrollshift RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

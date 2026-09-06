@@ -18,6 +18,6 @@ count=$(awk -v f="$archive" '$0 ~ /^[0-9a-f]{64}  / && substr($0,67)==f {n++} EN
 expected=$(awk -v f="$archive" '$0 ~ /^[0-9a-f]{64}  / && substr($0,67)==f {print substr($0,1,64)}' "$tmp/SHA256SUMS")
 if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$tmp/$archive"|awk '{print $1}'); elif command -v shasum >/dev/null 2>&1; then actual=$(shasum -a 256 "$tmp/$archive"|awk '{print $1}'); else echo "ScrollShift installer: sha256sum or shasum is required" >&2; exit 1; fi
 [ "$actual" = "$expected" ] || { echo "ScrollShift installer: checksum verification failed" >&2; exit 1; }
-tar -xzf "$tmp/$archive" -C "$tmp"; binary="$tmp/$root/scrollshift"; [ -f "$binary" ] && [ ! -L "$binary" ] || { echo "ScrollShift installer: malformed release archive" >&2; exit 1; }; chmod 0755 "$binary"
+tar -xzf "$tmp/$archive" -C "$tmp"; binary="$tmp/$root/scrollshift"; if [ ! -f "$binary" ] || [ -L "$binary" ]; then echo "ScrollShift installer: malformed release archive" >&2; exit 1; fi; chmod 0755 "$binary"
 if [ "$(id -u)" -eq 0 ]; then "$binary" service install; elif command -v sudo >/dev/null 2>&1; then sudo "$binary" service install; else echo "ScrollShift installer: sudo is required for the system input service" >&2; exit 1; fi
 printf '\nInstalled ScrollShift %s.\nCheck service/device state with:\n  scrollshift service status\n  sudo scrollshift doctor\n' "$v"

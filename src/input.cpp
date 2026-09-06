@@ -43,23 +43,39 @@ bool wheel_code(std::uint16_t code) {
          code == REL_HWHEEL_HI_RES;
 }
 
-void read_udev_classification(const std::filesystem::path& path, DeviceInfo& d) {
+void read_udev_classification(const std::filesystem::path& path, DeviceInfo& d,
+                              const std::filesystem::path& data_root) {
   struct stat st{};
   if (::stat(path.c_str(), &st) != 0 || !S_ISCHR(st.st_mode)) return;
-  const auto data_path = std::filesystem::path("/run/udev/data") /
-      ("c" + std::to_string(major(st.st_rdev)) + ":" + std::to_string(minor(st.st_rdev)));
-  std::ifstream in(data_path);
-  if (!in) return;
-  std::string line;
-  while (std::getline(in, line)) {
-    if (line == "E:ID_INPUT_MOUSE=1") { d.is_mouse = true; d.udev_classified = true; }
-    else if (line == "E:ID_INPUT_TOUCHPAD=1") { d.is_touchpad = true; d.udev_classified = true; }
-    else if (line == "E:ID_INPUT_TOUCHSCREEN=1") { d.is_touchscreen = true; d.udev_classified = true; }
-  }
+  apply_udev_classification(major(st.st_rdev), minor(st.st_rdev), data_root, d);
 }
 }  // namespace
 
-std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path) {
+void apply_udev_classification(std::uint32_t major, std::uint32_t minor,
+                               const std::filesystem::path& data_root, DeviceInfo& d) {
+  const auto data_path = data_root /
+      ("c" + std::to_string(major) + ":" + std::to_string(minor));
+  std::ifstream in(data_path);
+  if (!in) return;
+  std::string line;
+  bool seen = false;
+  while (std::getline(in, line)) {
+    if (line == "E:ID_INPUT_MOUSE=1") { d.is_mouse = true; seen = true; }
+    else if (line == "E:ID_INPUT_TOUCHPAD=1") { d.is_touchpad = true; seen = true; }
+    else if (line == "E:ID_INPUT_TOUCHSCREEN=1") { d.is_touchscreen = true; seen = true; }
+    else if (line == "E:ID_INPUT_JOYSTICK=1") { d.is_joystick = true; seen = true; }
+    else if (line == "E:ID_INPUT_TABLET=1") { d.is_tablet = true; seen = true; }
+    else if (line == "E:ID_INPUT_TABLET_PAD=1") { d.is_tablet_pad = true; seen = true; }
+    else if (line == "E:ID_INPUT_POINTINGSTICK=1") { d.is_pointingstick = true; seen = true; }
+    else if (line == "E:ID_INPUT_KEYBOARD=1") { d.is_keyboard = true; seen = true; }
+    else if (line == "E:ID_INPUT_KEY=1" || line == "E:ID_INPUT_ACCELEROMETER=1" ||
+             line == "E:ID_INPUT_SWITCH=1") { seen = true; }
+  }
+  d.udev_classified = seen;
+}
+
+std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path,
+                                               const std::filesystem::path& udev_data_root) {
   const int fd = ::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
   if (fd < 0) return std::nullopt;
 
@@ -76,21 +92,36 @@ std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path
 
   std::array<unsigned long, (EV_MAX / kBitsPerWord) + 2> ev_bits{};
   std::array<unsigned long, (REL_MAX / kBitsPerWord) + 2> rel_bits{};
-  if (::ioctl(fd, EVIOCGBIT(0, sizeof(ev_bits)), ev_bits.data()) >= 0 && bit_set(ev_bits, EV_REL)) {
-    if (::ioctl(fd, EVIOCGBIT(EV_REL, sizeof(rel_bits)), rel_bits.data()) >= 0) {
-      d.relative_pointer = bit_set(rel_bits, REL_X) || bit_set(rel_bits, REL_Y);
-      d.wheel = bit_set(rel_bits, REL_WHEEL);
-      d.horizontal_wheel = bit_set(rel_bits, REL_HWHEEL);
-      d.hi_res_wheel = bit_set(rel_bits, REL_WHEEL_HI_RES);
-      d.hi_res_horizontal_wheel = bit_set(rel_bits, REL_HWHEEL_HI_RES);
+  std::array<unsigned long, (ABS_MAX / kBitsPerWord) + 2> abs_bits{};
+  std::array<unsigned long, (KEY_MAX / kBitsPerWord) + 2> key_bits{};
+  if (::ioctl(fd, EVIOCGBIT(0, sizeof(ev_bits)), ev_bits.data()) >= 0) {
+    if (bit_set(ev_bits, EV_REL)) {
+      if (::ioctl(fd, EVIOCGBIT(EV_REL, sizeof(rel_bits)), rel_bits.data()) >= 0) {
+        d.has_rel_x = bit_set(rel_bits, REL_X);
+        d.has_rel_y = bit_set(rel_bits, REL_Y);
+        d.relative_pointer = d.has_rel_x || d.has_rel_y;
+        d.wheel = bit_set(rel_bits, REL_WHEEL);
+        d.horizontal_wheel = bit_set(rel_bits, REL_HWHEEL);
+        d.hi_res_wheel = bit_set(rel_bits, REL_WHEEL_HI_RES);
+        d.hi_res_horizontal_wheel = bit_set(rel_bits, REL_HWHEEL_HI_RES);
+      }
+    }
+    if (bit_set(ev_bits, EV_ABS) && ::ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(abs_bits)), abs_bits.data()) >= 0) {
+      d.abs_axes = bit_set(abs_bits, ABS_X) || bit_set(abs_bits, ABS_Y);
+    }
+    if (bit_set(ev_bits, EV_KEY) && ::ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits.data()) >= 0) {
+      for (unsigned code = BTN_MOUSE; code <= BTN_MOUSE + 7 && code <= KEY_MAX; ++code) {
+        if (bit_set(key_bits, code)) { d.mouse_button = true; break; }
+      }
     }
   }
-  read_udev_classification(path, d);
+  read_udev_classification(path, d, udev_data_root);
   ::close(fd);
   return d;
 }
 
-std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root) {
+std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root,
+                                               const std::filesystem::path& udev_data_root) {
   std::vector<DeviceInfo> devices;
   std::error_code ec;
   if (!std::filesystem::exists(root, ec)) return devices;
@@ -98,7 +129,7 @@ std::vector<DeviceInfo> discover_input_devices(const std::filesystem::path& root
     if (ec) break;
     const auto filename = entry.path().filename().string();
     if (!filename.starts_with("event")) continue;
-    if (auto info = inspect_input_device(entry.path())) devices.push_back(std::move(*info));
+    if (auto info = inspect_input_device(entry.path(), udev_data_root)) devices.push_back(std::move(*info));
   }
   std::sort(devices.begin(), devices.end(), [](const auto& a, const auto& b) { return a.path < b.path; });
   return devices;
@@ -125,7 +156,12 @@ std::string describe_device(const DeviceInfo& d) {
     << "  hi-res=" << (d.hi_res_wheel ? "yes" : "no")
     << "  h-wheel=" << (d.horizontal_wheel ? "yes" : "no")
     << "  h-hi-res=" << (d.hi_res_horizontal_wheel ? "yes" : "no")
-    << "  class=" << (d.is_touchpad ? "touchpad" : d.is_touchscreen ? "touchscreen" : d.is_mouse ? "mouse" : "unknown");
+    << "  abs-axes=" << (d.abs_axes ? "yes" : "no")
+    << "  mouse-btn=" << (d.mouse_button ? "yes" : "no")
+    << "  class=" << (d.is_touchpad ? "touchpad" : d.is_touchscreen ? "touchscreen"
+                 : d.is_joystick ? "joystick" : d.is_tablet ? "tablet"
+                 : d.is_tablet_pad ? "tablet-pad" : d.is_pointingstick ? "pointing-stick"
+                 : d.is_keyboard ? "keyboard" : d.is_mouse ? "mouse" : "unknown");
   if (!d.phys.empty()) s << "\n  phys " << d.phys;
   return s.str();
 }
