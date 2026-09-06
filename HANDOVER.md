@@ -253,7 +253,7 @@ A first production-shaped runtime now exists:
 - matching requires a relative wheel pointer and explicitly excludes ScrollShift virtual devices;
 - zero matches cause the daemon to wait, while multiple matches cause it to refuse capture rather than guess;
 - `scrollshift daemon` attaches with the configured acceleration profile and rediscovers after source-session failure;
-- `scrollshift service enable|status|restart|start|stop|disable` provides simple systemd control;
+- `scrollshift service install|uninstall|start|stop|restart|status|enable|disable|logs` provides a hardened, consistent systemd lifecycle API;
 - the systemd unit uses `Restart=on-failure` and is installed with the binary;
 - the current permission model is a root system service, intentionally avoiding broad `/dev/input` permission changes during early development.
 
@@ -288,3 +288,21 @@ The packet transformer no longer assumes one wheel event of each code per `SYN_R
 A fixed-seed randomized transformer test now executes 100,000 mixed packet shapes and verifies deterministic equality between independent transformer instances while asserting that all non-wheel event values, event codes/types, timestamps and packet sizes remain unchanged. The generated corpus includes low-resolution-only, high-resolution-only, paired legacy/high-resolution, horizontal, mixed-axis, burst, duplicate-event and zero-net cases.
 
 The full 12-test suite passes under AddressSanitizer + UndefinedBehaviorSanitizer with leak detection enabled. In the ordinary warnings-as-errors debug build, the 100,000-packet property test completes in roughly 0.1 seconds in the current container, which is ample throughput headroom for human input. Do not turn that number into a public performance claim without a reproducible benchmark protocol; its purpose here is to detect pathological overhead.
+
+
+## Service CLI hardening for first release
+
+The first-release service surface is intentionally owned by the C++ CLI rather than shell installer logic. `service install` resolves `/proc/self/exe`, atomically installs the exact executable to `/usr/local/bin/scrollshift`, creates `/etc/scrollshift`, writes the managed system unit via a temporary file + rename, performs `daemon-reload`, and enables the unit. It only restarts when an existing configuration passes the non-grabbing `doctor` preflight; an unconfigured install is enabled but left stopped.
+
+Safety invariants learned from the Gantry Go service work and retained here:
+
+- mutation requires root; read-only status/logs do not;
+- service process spawning uses `fork`/`execvp` argument vectors, not shell-interpolated command strings;
+- the unit and executable use canonical absolute paths;
+- install/uninstall/start/stop/restart/enable/disable refuse an unmanaged or malformed unit rather than modifying somebody else's systemd configuration;
+- binary and unit replacement are staged through same-directory temporary files then renamed;
+- start/restart fail closed when `doctor` cannot validate config/device identity;
+- uninstall removes service registration but preserves `/etc/scrollshift`; explicit website `uninstall.sh --purge` removes configuration;
+- the unit keeps the previous fail-open lifecycle policy (`Restart=on-failure`, `RestartPreventExitStatus=2`, bounded stop timeout) and adds systemd sandboxing compatible with evdev/uinput access.
+
+The website scripts are thin distribution entry points. `install.sh` and `download.sh` fail closed unless exactly one structurally valid checksum entry matches the selected release archive and the archive bytes verify. The shell installer does not hand-author systemd state; it delegates that to `scrollshift service install`.

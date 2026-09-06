@@ -64,8 +64,8 @@ checkout on `main` first, then the corresponding authoritative source changes
 on `stage`, and verify both trees are clean.
 
 The canonical `packaging/install.sh` in this repository is served byte-for-byte
-as `https://scrollshift-dev.github.io/install`. When the installer changes,
-copy it to the website root `install` and commit the generated `public/install`
+as `https://scrollshift.dev/install.sh`. When the installer changes,
+copy it to the website root `install.sh` (and compatibility alias `install`) and commit the generated public script copies
 so `installer-public-smoke` keeps passing.
 
 ## Version and notes
@@ -131,3 +131,20 @@ fix the problem before tagging where possible, and retain exact evidence.
    checksums, installation tests and known limitations in this handover.
 2. Update the website install/download instructions only with availability that
    has been confirmed from the public release.
+
+## First-release service/distribution gates
+
+Before the first public tag, additionally require all of the following at the exact release-candidate SHA:
+
+1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass.
+2. `sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh` (invoke individually on shells that accept one script at a time).
+3. Confirm `scrollshift service nonsense` exits 2 and performs no mutation.
+4. In a disposable systemd Linux VM, test fresh `service install`, repeated install, configured start/restart, stop, enable/disable, logs, uninstall, and install over a deliberately unmanaged `scrollshift.service` (must refuse it).
+5. Test installation when no config exists: unit is installed/enabled but remains stopped, with clear next-step output.
+6. Test invalid/ambiguous configuration: `service start` and `restart` must refuse before systemd grabs a device.
+7. Test `curl -fsSL https://scrollshift.dev/download.sh | sh` into a clean directory and verify the downloaded binary version.
+8. Test `curl -fsSL https://scrollshift.dev/install.sh | sh` on the published release and verify `/usr/local/bin/scrollshift --version`, managed-unit status, and the unconfigured/configured startup paths.
+9. Test `uninstall.sh` preserves `/etc/scrollshift`; test `uninstall.sh --purge` only in a disposable environment.
+10. Verify website source and generated `public/` repositories are clean and that all four public shell scripts exactly match the canonical copies in `packaging/`.
+
+Do not tag if any service lifecycle or public installer gate is only assumed from unit tests. The input-grab privilege boundary and systemd lifecycle require a real disposable-host check before first publication.

@@ -57,62 +57,47 @@ The time-bounded development commands remain useful for diagnostics, but ordinar
 
 ## Install as a background service
 
-ScrollShift installs a systemd system service because evdev capture and uinput creation require privileged input-device access in the current design.
-
-First build and install:
+The recommended release install is:
 
 ```bash
-make test
-sudo make install
+curl -fsSL https://scrollshift.dev/install.sh | sh
 ```
 
-Then identify the real pointer event node and generate configuration from it:
+The installer verifies the selected GitHub release against `SHA256SUMS`, then invokes ScrollShift's own privileged service installer. The CLI copies the running executable atomically to `/usr/local/bin/scrollshift`, writes a managed `/etc/systemd/system/scrollshift.service`, reloads systemd, and enables the service. It will only start immediately when `/etc/scrollshift/config.conf` exists and passes `scrollshift doctor`.
+
+Configure a physical mouse once, then start the service:
 
 ```bash
 sudo scrollshift devices
 sudo scrollshift configure /dev/input/eventX
-```
-
-`configure` does **not** persist `/dev/input/eventX`. Event numbers are unstable across boots and reconnects. It stores the device vendor/product identity plus normalized kernel name in:
-
-```text
-/etc/scrollshift/config.conf
-```
-
-The default generated profile is `balanced`. A different experimental profile can be selected during configuration:
-
-```bash
-sudo scrollshift configure /dev/input/eventX --profile precision
-```
-
-Enable the service and start it immediately:
-
-```bash
-sudo scrollshift service enable
-```
-
-The wrapper performs a systemd daemon reload before enabling the unit.
-
-Before starting the service, a non-grabbing health check can validate the configuration and current device match:
-
-```bash
 sudo scrollshift doctor
+sudo scrollshift service start
 ```
 
-Day-to-day service controls are:
+Service commands follow the same lifecycle API used by the Gantry Go services:
 
 ```bash
+sudo scrollshift service install
+sudo scrollshift service uninstall
+sudo scrollshift service start
+sudo scrollshift service stop
+sudo scrollshift service restart
 scrollshift service status
 scrollshift service logs
-sudo scrollshift service restart
-sudo scrollshift service stop
-sudo scrollshift service start
+scrollshift service logs --follow
+sudo scrollshift service enable
 sudo scrollshift service disable
 ```
 
-The daemon rediscovers the current event node from stable identity after startup or reconnect. If no matching mouse exists it waits. If the configured identity is ambiguous it refuses to grab any device instead of guessing. ScrollShift-created virtual devices are excluded from capture candidates to prevent reinjection loops.
+Mutating commands require root. ScrollShift refuses to start/restart when the configuration/device preflight fails, refuses to replace or remove a systemd unit it does not recognize as ScrollShift-managed, and keeps `/etc/scrollshift` on ordinary uninstall. `uninstall.sh --purge` is the explicit destructive configuration-removal path.
 
-The systemd unit uses `Restart=on-failure`, but exit status 2 (invalid/missing configuration) is explicitly excluded from restart so a configuration mistake cannot create a restart storm. Ordinary mouse disappearance/reconnect is handled inside the daemon itself. Reconnect waits are signal-interruptible so stop/restart remains prompt even with a large `reconnect_ms`.
+To download a verified binary without installing or touching systemd:
+
+```bash
+curl -fsSL https://scrollshift.dev/download.sh | sh
+```
+
+The current service remains a root system service because evdev capture and uinput creation require privileged input-device access in the current design.
 
 ## Current configuration
 

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 project(ScrollShift VERSION 0.1.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 option(SCROLLSHIFT_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
-set(SCROLLSHIFT_SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/lib/systemd/system" CACHE PATH "systemd system unit directory")
 
 add_library(scrollshift_core
   src/input.cpp
@@ -12,7 +11,8 @@ add_library(scrollshift_core
   src/relay.cpp
   src/config.cpp
   src/daemon.cpp
-  src/environment.cpp)
+  src/environment.cpp
+  src/service.cpp)
 target_compile_features(scrollshift_core PUBLIC cxx_std_20)
 target_include_directories(scrollshift_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(scrollshift_core PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic>)
@@ -25,7 +25,6 @@ if(SCROLLSHIFT_WARNINGS_AS_ERRORS)
   target_compile_options(scrollshift PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Werror>)
 endif()
 
-configure_file(packaging/scrollshift.service.in ${CMAKE_CURRENT_BINARY_DIR}/scrollshift.service @ONLY)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -67,5 +66,4 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS scrollshift RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/scrollshift.service DESTINATION ${SCROLLSHIFT_SYSTEMD_UNIT_DIR})
 install(FILES packaging/config.conf.example DESTINATION ${CMAKE_INSTALL_DATADIR}/scrollshift)

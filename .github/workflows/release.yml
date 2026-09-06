@@ -46,9 +46,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate installer
+      - name: Validate public scripts
         run: |
-          sh -n packaging/install.sh
+          for script in packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh; do
+            sh -n "$script"
+          done
 
   publish:
     needs: [linux, installer-preflight]
@@ -77,14 +79,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch and verify public installer
+      - name: Fetch and verify public scripts
         run: |
-          curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL https://scrollshift-dev.github.io/install -o /tmp/scrollshift-install.sh
-          cmp packaging/install.sh /tmp/scrollshift-install.sh
-          sh -n /tmp/scrollshift-install.sh
-      - name: Install tagged release through public installer
+          for script in install.sh download.sh update.sh uninstall.sh; do
+            curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://scrollshift.dev/$script" -o "/tmp/$script"
+            cmp "packaging/$script" "/tmp/$script"
+            sh -n "/tmp/$script"
+          done
+      - name: Download tagged release through public download script
         run: |
           version="${GITHUB_REF_NAME#v}"
-          install_dir="$RUNNER_TEMP/scrollshift-bin"
-          SCROLLSHIFT_VERSION="$version" SCROLLSHIFT_INSTALL_DIR="$install_dir" sh /tmp/scrollshift-install.sh
-          test "$("$install_dir/scrollshift" --version | sed -E 's/^scrollshift ([^ ]+)$/\1/')" = "$version"
+          cd "$RUNNER_TEMP"
+          SCROLLSHIFT_VERSION="$version" sh /tmp/download.sh --output scrollshift
+          test "$(./scrollshift --version | sed -E 's/^scrollshift ([^ ]+)$/\1/')" = "$version"

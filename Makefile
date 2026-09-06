@@ -17,14 +17,14 @@ test: build
 
 install: build
 	cmake --install $(BUILD_DIR)
+	/usr/local/bin/scrollshift service install
 	@echo
-	@echo "Next: sudo scrollshift configure /dev/input/eventN"
-	@echo "Then: sudo scrollshift service enable"
+	@echo "Next: sudo scrollshift devices"
+	@echo "Then: sudo scrollshift configure /dev/input/eventN && sudo scrollshift service start"
 
 uninstall:
-	systemctl disable --now scrollshift.service 2>/dev/null || true
-	rm -f /usr/local/bin/scrollshift /usr/local/lib/systemd/system/scrollshift.service
-	systemctl daemon-reload 2>/dev/null || true
+	@if [ -x /usr/local/bin/scrollshift ]; then /usr/local/bin/scrollshift service uninstall; fi
+	rm -f /usr/local/bin/scrollshift
 	@echo "Configuration in /etc/scrollshift is intentionally preserved."
 
 clean:

@@ -11,6 +11,7 @@
 #include "scrollshift/experiment.hpp"
 #include "scrollshift/input.hpp"
 #include "scrollshift/relay.hpp"
+#include "scrollshift/service.hpp"
 #include "scrollshift/transform.hpp"
 #include "scrollshift/version.hpp"
 
@@ -25,7 +26,7 @@ void print_help() {
       << "  scrollshift configure DEVICE [--profile NAME] [--config FILE]\n"
       << "  scrollshift daemon [--config FILE]\n"
       << "  scrollshift doctor [--config FILE]\n"
-      << "  scrollshift service status|restart|start|stop|enable|disable|logs\n"
+      << "  scrollshift service install|uninstall|start|stop|restart|status|enable|disable|logs [--follow]\n"
       << "  scrollshift inspect DEVICE\n"
       << "  scrollshift monitor DEVICE [--all] [--record FILE]\n"
       << "  scrollshift relay DEVICE [--seconds N]\n"
@@ -58,32 +59,7 @@ int devices() {
   return 0;
 }
 
-int service_command(std::string_view action) {
-  const char* verb = nullptr;
-  const char* extra = nullptr;
-  if (action == "status") verb = "status";
-  else if (action == "restart") verb = "restart";
-  else if (action == "start") verb = "start";
-  else if (action == "stop") verb = "stop";
-  else if (action == "enable") { verb = "enable"; extra = "--now"; }
-  else if (action == "disable") { verb = "disable"; extra = "--now"; }
-  else if (action == "logs") {
-    ::execlp("journalctl", "journalctl", "-u", "scrollshift.service", "-n", "80", "--no-pager", static_cast<char*>(nullptr));
-    std::cerr << "scrollshift: failed to execute journalctl\n";
-    return 1;
-  }
-  else { std::cerr << "scrollshift: service action must be status, restart, start, stop, enable, disable, or logs\n"; return 2; }
-  if (action == "start" || action == "restart" || action == "enable") {
-    if (std::system("systemctl daemon-reload") != 0) {
-      std::cerr << "scrollshift: systemctl daemon-reload failed\n";
-      return 1;
-    }
-  }
-  if (extra) ::execlp("systemctl", "systemctl", verb, extra, "scrollshift.service", static_cast<char*>(nullptr));
-  else ::execlp("systemctl", "systemctl", verb, "scrollshift.service", static_cast<char*>(nullptr));
-  std::cerr << "scrollshift: failed to execute systemctl\n";
-  return 1;
-}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -122,7 +98,12 @@ int main(int argc, char** argv) {
     }
     return scrollshift::run_doctor(config_path, std::cout);
   }
-  if (arg == "service" && argc == 3) return service_command(argv[2]);
+  if (arg == "service" && argc >= 3) {
+    bool follow = false;
+    if (argc == 4 && std::string_view(argv[3]) == "--follow" && std::string_view(argv[2]) == "logs") follow = true;
+    else if (argc != 3) { std::cerr << "scrollshift: invalid service options\n"; return 2; }
+    return scrollshift::run_service_command(argv[2], follow, std::cout, std::cerr);
+  }
   if (arg == "inspect" && argc == 3) {
     auto d = scrollshift::inspect_input_device(argv[2]);
     if (!d) { std::cerr << "scrollshift: cannot inspect " << argv[2] << "\n"; return 1; }
