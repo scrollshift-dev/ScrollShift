@@ -20,4 +20,4 @@ if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$tmp/$archive"
 [ "$actual" = "$expected" ] || { echo "ScrollShift installer: checksum verification failed" >&2; exit 1; }
 tar -xzf "$tmp/$archive" -C "$tmp"; binary="$tmp/$root/scrollshift"; [ -f "$binary" ] && [ ! -L "$binary" ] || { echo "ScrollShift installer: malformed release archive" >&2; exit 1; }; chmod 0755 "$binary"
 if [ "$(id -u)" -eq 0 ]; then "$binary" service install; elif command -v sudo >/dev/null 2>&1; then sudo "$binary" service install; else echo "ScrollShift installer: sudo is required for the system input service" >&2; exit 1; fi
-printf '\nInstalled ScrollShift %s. Next:\n  sudo scrollshift devices\n  sudo scrollshift configure /dev/input/eventX\n  sudo scrollshift service start\n' "$v"
+printf '\nInstalled ScrollShift %s.\nCheck service/device state with:\n  scrollshift service status\n  sudo scrollshift doctor\n' "$v"

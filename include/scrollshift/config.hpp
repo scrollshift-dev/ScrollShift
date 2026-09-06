@@ -18,6 +18,7 @@ struct DeviceSelector {
 };
 
 struct DaemonConfig {
+  bool auto_discover{true};
   DeviceSelector device;
   std::string profile{"balanced"};
   int reconnect_ms{1000};
@@ -29,6 +30,8 @@ std::string serialize_config(const DaemonConfig& config);
 DaemonConfig config_for_device(const DeviceInfo& device, const std::string& profile = "balanced");
 bool matches_selector(const DeviceInfo& device, const DeviceSelector& selector);
 bool is_capture_candidate(const DeviceInfo& device);
+bool is_automatic_mouse_candidate(const DeviceInfo& device);
+std::vector<DeviceInfo> automatic_mouse_candidates(const std::vector<DeviceInfo>& devices);
 std::vector<DeviceInfo> matching_capture_devices(const std::vector<DeviceInfo>& devices,
                                                  const DeviceSelector& selector);
 

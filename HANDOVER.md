@@ -274,6 +274,16 @@ The daemon/service layer now has deterministic regression coverage for device-ma
 Those lifecycle changes were subsequently exercised on real hardware; see the hardware lifecycle closure below.
 
 
+## 2026-09-06 automatic mouse discovery update
+
+The first-release default no longer requires users to identify or configure `/dev/input/eventN`. `mode = auto` is now the default daemon configuration. Device inspection reads udev database properties for `ID_INPUT_MOUSE`, `ID_INPUT_TOUCHPAD` and `ID_INPUT_TOUCHSCREEN`; explicit touchpads/touchscreens are always excluded. When udev classification is unavailable, ScrollShift falls back conservatively to evdev relative-pointer + wheel capabilities while still excluding its own virtual devices.
+
+In auto mode the daemon may start with zero mice attached, waits without failing, attaches qualifying wheel mice as they appear, supports multiple simultaneous mice with independent relay workers, and re-enumerates after unplug/replug or event-node renumbering. `/dev/input/eventN` is never persisted. Existing explicit device configurations remain backward-compatible, and `scrollshift configure DEVICE` now serves as a manual override for unusual hardware rather than a mandatory setup step.
+
+`service install` creates an automatic config only when `/etc/scrollshift/config.conf` does not already exist, so upgrades preserve user choices. A fresh install can therefore install, enable and start in one operation. `doctor` in auto mode reports currently detected mouse candidates but succeeds when none are attached, because waiting for future hotplug is a valid ready state.
+
+This materially improves suitability for native desktop integration such as Omarchy: the platform can enable the service without per-machine event-node setup, while touchpad behaviour remains outside ScrollShift. Before first release, this still needs real-hardware testing on at least a laptop with a touchpad + USB/Bluetooth mouse and ideally two simultaneous mice, including hotplug and suspend/resume.
+
 ## 2026-08-18 hardware lifecycle closure
 
 The primary test machine successfully exercised the installed system service through normal start/restart, forced `SIGKILL`, physical receiver unplug/replug, and suspend/resume. All paths recovered without manual mouse repair, and stable identity rediscovery survived device disappearance. Treat this as the evidence closing CP4 and the initial CP7 lifecycle/hotplug gate.
@@ -292,7 +302,7 @@ The full 12-test suite passes under AddressSanitizer + UndefinedBehaviorSanitize
 
 ## Service CLI hardening for first release
 
-The first-release service surface is intentionally owned by the C++ CLI rather than shell installer logic. `service install` resolves `/proc/self/exe`, atomically installs the exact executable to `/usr/local/bin/scrollshift`, creates `/etc/scrollshift`, writes the managed system unit via a temporary file + rename, performs `daemon-reload`, and enables the unit. It only restarts when an existing configuration passes the non-grabbing `doctor` preflight; an unconfigured install is enabled but left stopped.
+The first-release service surface is intentionally owned by the C++ CLI rather than shell installer logic. `service install` resolves `/proc/self/exe`, atomically installs the exact executable to `/usr/local/bin/scrollshift`, creates `/etc/scrollshift`, writes a default `mode = auto` config only when no config exists, writes the managed system unit via a temporary file + rename, performs `daemon-reload`, enables the unit, and starts it after the non-grabbing `doctor` preflight. Existing config is never overwritten.
 
 Safety invariants learned from the Gantry Go service work and retained here:
 
@@ -301,7 +311,7 @@ Safety invariants learned from the Gantry Go service work and retained here:
 - the unit and executable use canonical absolute paths;
 - install/uninstall/start/stop/restart/enable/disable refuse an unmanaged or malformed unit rather than modifying somebody else's systemd configuration;
 - binary and unit replacement are staged through same-directory temporary files then renamed;
-- start/restart fail closed when `doctor` cannot validate config/device identity;
+- start/restart fail closed when `doctor` cannot validate configuration; auto mode treats zero currently attached mice as a valid waiting state, while manual device mode retains strict identity validation;
 - uninstall removes service registration but preserves `/etc/scrollshift`; explicit website `uninstall.sh --purge` removes configuration;
 - the unit keeps the previous fail-open lifecycle policy (`Restart=on-failure`, `RestartPreventExitStatus=2`, bounded stop timeout) and adds systemd sandboxing compatible with evdev/uinput access.
 

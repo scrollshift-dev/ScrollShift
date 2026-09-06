@@ -1,8 +1,12 @@
 #include "scrollshift/daemon.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <memory>
+#include <sstream>
 #include <thread>
+#include <vector>
 
 #include "scrollshift/config.hpp"
 #include "scrollshift/input.hpp"
@@ -28,6 +32,38 @@ const char* match_state_name(DeviceMatchState state) {
   }
   return "unknown";
 }
+
+struct RelayWorker {
+  std::filesystem::path path;
+  std::string name;
+  std::atomic<bool> finished{false};
+  int result{0};
+  std::ostringstream log;
+  std::thread thread;
+};
+
+bool worker_for(const std::vector<std::unique_ptr<RelayWorker>>& workers,
+                const std::filesystem::path& path) {
+  return std::any_of(workers.begin(), workers.end(), [&](const auto& worker) {
+    return worker->path == path && !worker->finished.load();
+  });
+}
+
+void reap_workers(std::vector<std::unique_ptr<RelayWorker>>& workers, std::ostream& output,
+                  bool join_all = false) {
+  auto it = workers.begin();
+  while (it != workers.end()) {
+    auto& worker = *it;
+    if (!join_all && !worker->finished.load()) { ++it; continue; }
+    if (worker->thread.joinable()) worker->thread.join();
+    const auto text = worker->log.str();
+    if (!text.empty()) output << text;
+    if (!join_all) output << "Input session for " << worker->name << " ended (code " << worker->result
+                          << "); device will be rediscovered if still present.\n";
+    output.flush();
+    it = workers.erase(it);
+  }
+}
 }
 
 int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
@@ -39,9 +75,22 @@ int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
     return 2;
   }
 
-  const auto diagnosis = diagnose_device_match(discover_input_devices(input_root), config->device);
+  const auto devices = discover_input_devices(input_root);
   output << "Config: " << config_path << '\n'
-         << "Profile: " << config->profile << '\n'
+         << "Profile: " << config->profile << '\n';
+
+  if (config->auto_discover) {
+    const auto mice = automatic_mouse_candidates(devices);
+    output << "Mode: automatic mouse discovery\n"
+           << "Detected conventional wheel mice: " << mice.size() << '\n';
+    for (const auto& mouse : mice) output << "  " << mouse.path << "  " << mouse.name << '\n';
+    output << "Touchpads and touchscreens are excluded; hotplugged mice are discovered automatically.\n";
+    if (mice.empty()) output << "No mouse is attached right now; the daemon can still start and wait for one.\n";
+    return 0;
+  }
+
+  const auto diagnosis = diagnose_device_match(devices, config->device);
+  output << "Mode: manual device override\n"
          << "Device: " << std::hex << config->device.vendor << ':' << config->device.product << std::dec;
   if (!config->device.name.empty()) output << "  " << config->device.name;
   output << '\n' << "Match state: " << match_state_name(diagnosis.state) << '\n';
@@ -74,7 +123,48 @@ int run_daemon(const std::filesystem::path& config_path, std::ostream& output,
   output << "ScrollShift daemon starting with profile '" << config->profile << "'.\n";
   output.flush();
 
-  DeviceMatchState last_state = DeviceMatchState::Unique;  // force first state message
+  if (config->auto_discover) {
+    output << "Automatic mouse discovery enabled; touchpads and touchscreens are ignored.\n";
+    output.flush();
+    std::vector<std::unique_ptr<RelayWorker>> workers;
+    bool announced_wait = false;
+    while (!relay_stop_requested()) {
+      reap_workers(workers, output);
+      const auto mice = automatic_mouse_candidates(discover_input_devices(input_root));
+      bool attached_any = false;
+      for (const auto& mouse : mice) {
+        if (worker_for(workers, mouse.path)) { attached_any = true; continue; }
+        auto worker = std::make_unique<RelayWorker>();
+        worker->path = mouse.path;
+        worker->name = mouse.name.empty() ? mouse.path.string() : mouse.name;
+        auto* raw = worker.get();
+        output << "Attaching to " << mouse.path << " (" << worker->name << ")\n";
+        output.flush();
+        raw->thread = std::thread([raw, profile = config->profile, uinput_path]() {
+          raw->result = run_accelerated_relay(raw->path, profile, 0, 0, raw->log, uinput_path, false);
+          raw->finished.store(true);
+        });
+        workers.push_back(std::move(worker));
+        attached_any = true;
+      }
+      if (!attached_any && workers.empty()) {
+        if (!announced_wait) {
+          output << "Waiting for a conventional wheel mouse...\n";
+          output.flush();
+          announced_wait = true;
+        }
+      } else {
+        announced_wait = false;
+      }
+      interruptible_sleep(config->reconnect_ms);
+    }
+    reap_workers(workers, output, true);
+    output << "ScrollShift daemon stopped.\n";
+    output.flush();
+    return 0;
+  }
+
+  DeviceMatchState last_state = DeviceMatchState::Unique;
   while (!relay_stop_requested()) {
     const auto diagnosis = diagnose_device_match(discover_input_devices(input_root), config->device);
     if (diagnosis.state == DeviceMatchState::Missing) {

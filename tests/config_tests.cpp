@@ -20,6 +20,22 @@ int main() {
   real.relative_pointer=true; real.wheel=true; real.hi_res_wheel=true;
   assert(matches_selector(real, config->device));
   assert(is_capture_candidate(real));
+  assert(is_automatic_mouse_candidate(real));
+
+  DeviceInfo classified_mouse = real;
+  classified_mouse.udev_classified = true; classified_mouse.is_mouse = true;
+  assert(is_automatic_mouse_candidate(classified_mouse));
+  DeviceInfo touchpad = real;
+  touchpad.udev_classified = true; touchpad.is_touchpad = true;
+  assert(!is_automatic_mouse_candidate(touchpad));
+  DeviceInfo touchscreen = real;
+  touchscreen.udev_classified = true; touchscreen.is_touchscreen = true;
+  assert(!is_automatic_mouse_candidate(touchscreen));
+  DeviceInfo classified_other = real;
+  classified_other.udev_classified = true;
+  assert(!is_automatic_mouse_candidate(classified_other));
+  const auto auto_mice = automatic_mouse_candidates({touchpad, touchscreen, classified_other, classified_mouse});
+  assert(auto_mice.size() == 1 && auto_mice.front().is_mouse);
 
   DeviceInfo virtual_device = real;
   virtual_device.vendor=0x5357; virtual_device.product=0x0003; virtual_device.name="ScrollShift Accelerated";
@@ -38,6 +54,11 @@ int main() {
   DeviceInfo duplicate = real; duplicate.path = "/dev/input/event99";
   const auto ambiguous = diagnose_device_match({real, duplicate}, config->device);
   assert(ambiguous.state == DeviceMatchState::Ambiguous && ambiguous.matches.size() == 2);
+
+  std::istringstream automatic("mode = auto\nprofile = balanced\nreconnect_ms = 500\n");
+  auto auto_config = parse_config(automatic, error);
+  assert(auto_config && auto_config->auto_discover);
+  assert(serialize_config(*auto_config).find("mode = auto") != std::string::npos);
 
   const auto roundtrip_text = serialize_config(*config);
   std::istringstream roundtrip(roundtrip_text);

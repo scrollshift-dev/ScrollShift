@@ -23,6 +23,10 @@ struct DeviceInfo {
   bool horizontal_wheel{};
   bool hi_res_wheel{};
   bool hi_res_horizontal_wheel{};
+  bool udev_classified{};
+  bool is_mouse{};
+  bool is_touchpad{};
+  bool is_touchscreen{};
 };
 
 struct RecordedEvent {

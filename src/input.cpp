@@ -7,9 +7,12 @@
 #include <cctype>
 #include <fcntl.h>
 #include <iomanip>
+#include <fstream>
 #include <linux/input.h>
 #include <sstream>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 
 namespace scrollshift {
@@ -39,6 +42,21 @@ bool wheel_code(std::uint16_t code) {
   return code == REL_WHEEL || code == REL_HWHEEL || code == REL_WHEEL_HI_RES ||
          code == REL_HWHEEL_HI_RES;
 }
+
+void read_udev_classification(const std::filesystem::path& path, DeviceInfo& d) {
+  struct stat st{};
+  if (::stat(path.c_str(), &st) != 0 || !S_ISCHR(st.st_mode)) return;
+  const auto data_path = std::filesystem::path("/run/udev/data") /
+      ("c" + std::to_string(major(st.st_rdev)) + ":" + std::to_string(minor(st.st_rdev)));
+  std::ifstream in(data_path);
+  if (!in) return;
+  std::string line;
+  while (std::getline(in, line)) {
+    if (line == "E:ID_INPUT_MOUSE=1") { d.is_mouse = true; d.udev_classified = true; }
+    else if (line == "E:ID_INPUT_TOUCHPAD=1") { d.is_touchpad = true; d.udev_classified = true; }
+    else if (line == "E:ID_INPUT_TOUCHSCREEN=1") { d.is_touchscreen = true; d.udev_classified = true; }
+  }
+}
 }  // namespace
 
 std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path) {
@@ -67,6 +85,7 @@ std::optional<DeviceInfo> inspect_input_device(const std::filesystem::path& path
       d.hi_res_horizontal_wheel = bit_set(rel_bits, REL_HWHEEL_HI_RES);
     }
   }
+  read_udev_classification(path, d);
   ::close(fd);
   return d;
 }
@@ -105,7 +124,8 @@ std::string describe_device(const DeviceInfo& d) {
     << "  wheel=" << (d.wheel ? "yes" : "no")
     << "  hi-res=" << (d.hi_res_wheel ? "yes" : "no")
     << "  h-wheel=" << (d.horizontal_wheel ? "yes" : "no")
-    << "  h-hi-res=" << (d.hi_res_horizontal_wheel ? "yes" : "no");
+    << "  h-hi-res=" << (d.hi_res_horizontal_wheel ? "yes" : "no")
+    << "  class=" << (d.is_touchpad ? "touchpad" : d.is_touchscreen ? "touchscreen" : d.is_mouse ? "mouse" : "unknown");
   if (!d.phys.empty()) s << "\n  phys " << d.phys;
   return s.str();
 }

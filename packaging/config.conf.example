@@ -1,9 +1,8 @@
-# Generate the real configuration from your mouse with:
-#   sudo scrollshift configure /dev/input/eventN
-#
-# The daemon persists stable device identity, never eventN.
-device_vendor = 0x0000
-device_product = 0x0000
-device_name = replace-me
+# ScrollShift default configuration
+# Conventional wheel mice are discovered automatically. Touchpads and touchscreens are ignored.
+mode = auto
 profile = balanced
 reconnect_ms = 1000
+
+# For unusual hardware, `scrollshift configure /dev/input/eventN` writes a
+# mode = device override using stable vendor/product/name identity.

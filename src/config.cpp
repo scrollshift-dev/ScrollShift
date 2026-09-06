@@ -55,7 +55,12 @@ std::optional<DaemonConfig> parse_config(std::istream& input, std::string& error
     }
     const auto key = trim(line.substr(0, eq));
     const auto value = trim(line.substr(eq + 1));
-    if (key == "device_vendor") {
+    if (key == "mode") {
+      if (value == "auto") config.auto_discover = true;
+      else if (value == "device") config.auto_discover = false;
+      else { error = "line " + std::to_string(line_no) + ": mode must be auto or device"; return std::nullopt; }
+    } else if (key == "device_vendor") {
+      config.auto_discover = false;
       if (!parse_u16(value, config.device.vendor)) { error = "line " + std::to_string(line_no) + ": invalid device_vendor"; return std::nullopt; }
       have_vendor = true;
     } else if (key == "device_product") {
@@ -82,8 +87,8 @@ std::optional<DaemonConfig> parse_config(std::istream& input, std::string& error
       return std::nullopt;
     }
   }
-  if (!have_vendor || !have_product) {
-    error = "device_vendor and device_product are required";
+  if (!config.auto_discover && (!have_vendor || !have_product)) {
+    error = "device_vendor and device_product are required in device mode";
     return std::nullopt;
   }
   return config;
@@ -97,11 +102,17 @@ std::optional<DaemonConfig> load_config(const std::filesystem::path& path, std::
 
 std::string serialize_config(const DaemonConfig& config) {
   std::ostringstream out;
-  out << "# ScrollShift configuration\n"
-      << "# Generated from a real input device; no /dev/input/eventN path is persisted.\n"
-      << "device_vendor = 0x" << std::hex << std::setw(4) << std::setfill('0') << config.device.vendor << '\n'
-      << "device_product = 0x" << std::setw(4) << config.device.product << std::dec << '\n';
-  if (!config.device.name.empty()) out << "device_name = " << config.device.name << '\n';
+  out << "# ScrollShift configuration\n";
+  if (config.auto_discover) {
+    out << "# Automatically discovers conventional wheel mice and ignores touchpads/touchscreens.\n"
+        << "mode = auto\n";
+  } else {
+    out << "# Manual device override; no /dev/input/eventN path is persisted.\n"
+        << "mode = device\n"
+        << "device_vendor = 0x" << std::hex << std::setw(4) << std::setfill('0') << config.device.vendor << '\n'
+        << "device_product = 0x" << std::setw(4) << config.device.product << std::dec << '\n';
+    if (!config.device.name.empty()) out << "device_name = " << config.device.name << '\n';
+  }
   out << "profile = " << config.profile << '\n'
       << "reconnect_ms = " << config.reconnect_ms << '\n';
   return out.str();
@@ -109,6 +120,7 @@ std::string serialize_config(const DaemonConfig& config) {
 
 DaemonConfig config_for_device(const DeviceInfo& device, const std::string& profile) {
   DaemonConfig config;
+  config.auto_discover = false;
   config.device.vendor = device.vendor;
   config.device.product = device.product;
   config.device.name = device.name;
@@ -127,6 +139,21 @@ bool is_capture_candidate(const DeviceInfo& device) {
   if (device.vendor == 0x5357) return false;
   if (device.name.starts_with("ScrollShift ")) return false;
   return true;
+}
+
+bool is_automatic_mouse_candidate(const DeviceInfo& device) {
+  if (!is_capture_candidate(device)) return false;
+  if (device.is_touchpad || device.is_touchscreen) return false;
+  if (device.udev_classified) return device.is_mouse;
+  // Conservative dependency-free fallback for systems without udev metadata:
+  // kernel touchpads are normally absolute devices, while wheel mice expose REL_X/REL_Y.
+  return device.relative_pointer;
+}
+
+std::vector<DeviceInfo> automatic_mouse_candidates(const std::vector<DeviceInfo>& devices) {
+  std::vector<DeviceInfo> matches;
+  for (const auto& device : devices) if (is_automatic_mouse_candidate(device)) matches.push_back(device);
+  return matches;
 }
 
 std::vector<DeviceInfo> matching_capture_devices(const std::vector<DeviceInfo>& devices,

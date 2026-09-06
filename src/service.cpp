@@ -1,4 +1,5 @@
 #include "scrollshift/service.hpp"
+#include "scrollshift/config.hpp"
 #include "scrollshift/daemon.hpp"
 #include "scrollshift/version.hpp"
 
@@ -130,6 +131,28 @@ fs::path self_executable() {
   return ec ? fs::path{} : fs::canonical(p, ec);
 }
 
+bool ensure_default_config(std::ostream& out, std::ostream& err) {
+  if (fs::exists(kConfigPath)) return true;
+  DaemonConfig config;
+  const fs::path tmp = std::string(kConfigPath) + ".new";
+  {
+    std::ofstream f(tmp, std::ios::trunc);
+    if (!f) { err << "scrollshift: cannot write default configuration\n"; return false; }
+    f << serialize_config(config);
+    f.flush();
+    if (!f) { err << "scrollshift: failed while writing default configuration\n"; return false; }
+  }
+  if (::chmod(tmp.c_str(), 0644) != 0) {
+    err << "scrollshift: chmod config failed: " << std::strerror(errno) << '\n';
+    std::error_code ec; fs::remove(tmp, ec); return false;
+  }
+  std::error_code ec;
+  fs::rename(tmp, kConfigPath, ec);
+  if (ec) { err << "scrollshift: cannot install default configuration: " << ec.message() << '\n'; fs::remove(tmp, ec); return false; }
+  out << "Created /etc/scrollshift/config.conf with automatic mouse discovery.\n";
+  return true;
+}
+
 int install_service(std::ostream& out, std::ostream& err) {
   if (require_root("install", err) || require_systemd(err)) return 1;
   if (fs::exists(kUnitPath)) {
@@ -141,6 +164,7 @@ int install_service(std::ostream& out, std::ostream& err) {
   std::error_code ec;
   fs::create_directories(kConfigDir, ec);
   if (ec) { err << "scrollshift: cannot create " << kConfigDir << ": " << ec.message() << '\n'; return 1; }
+  if (!ensure_default_config(out, err)) return 1;
   if (!atomic_copy(self, kBinaryPath, 0755, err)) return 1;
   const fs::path tmp = std::string(kUnitPath) + ".new";
   { std::ofstream f(tmp, std::ios::trunc); if (!f) { err << "scrollshift: cannot write temporary systemd unit\n"; return 1; } f << unit_body(); f.flush(); if (!f) return 1; }
@@ -151,18 +175,13 @@ int install_service(std::ostream& out, std::ostream& err) {
     err << "scrollshift: systemd reload/enable failed; service files were left installed for inspection\n"; return 1;
   }
   out << "Installed ScrollShift " << kVersion << " service.\n";
-  if (fs::exists(kConfigPath)) {
-    if (run({kBinaryPath, "doctor", "--config", kConfigPath}) == 0) {
-      if (run({"systemctl", "restart", kUnitName}) != 0) { err << "scrollshift: service installed but failed to start\n"; return 1; }
-      out << "Service enabled and running.\n";
-      return 0;
-    }
+  if (run({kBinaryPath, "doctor", "--config", kConfigPath}) != 0) {
     run({"systemctl", "stop", kUnitName});
     out << "Service enabled but not started because the current configuration did not pass `scrollshift doctor`.\n";
     return 0;
   }
-  run({"systemctl", "stop", kUnitName});
-  out << "Service enabled but not started. Configure a mouse first, then run `sudo scrollshift service start`.\n";
+  if (run({"systemctl", "restart", kUnitName}) != 0) { err << "scrollshift: service installed but failed to start\n"; return 1; }
+  out << "Service enabled and running.\n";
   return 0;
 }
 

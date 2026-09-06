@@ -25,6 +25,19 @@ int main() {
   const fs::path input_root = root / "input";
   const fs::path config = root / "config.conf";
   fs::create_directories(input_root);
+  const fs::path auto_config = root / "auto.conf";
+  {
+    std::ofstream out(auto_config);
+    out << "mode = auto\nprofile = balanced\nreconnect_ms = 1000\n";
+  }
+  {
+    std::ostringstream doctor_output;
+    if (scrollshift::run_doctor(auto_config, doctor_output, input_root) != 0 ||
+        doctor_output.str().find("No mouse is attached right now") == std::string::npos) {
+      std::fprintf(stderr, "[daemon-test] auto doctor did not accept empty hotplug-ready state\n");
+      return 1;
+    }
+  }
   {
     std::ofstream out(config);
     out << "device_vendor = 0x3151\n"

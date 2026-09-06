@@ -41,8 +41,8 @@ void print_help() {
       << "shows every event while --record saves the complete raw event stream.\n\n"
       << "Checkpoint 2 experiment commands create only a temporary uinput device.\n"
       << "They do not grab or modify a physical input device.\n\n"
-      << "The installed daemon uses stable device identity from /etc/scrollshift/config.conf\n"
-      << "and rediscovers the current event node after boot or reconnect.\n";
+      << "The installed daemon discovers conventional wheel mice automatically, ignores\n"
+      << "touchpads/touchscreens, and handles hotplug without persisting event-node paths.\n";
 }
 
 int devices() {

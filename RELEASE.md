@@ -139,12 +139,13 @@ Before the first public tag, additionally require all of the following at the ex
 1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass.
 2. `sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh` (invoke individually on shells that accept one script at a time).
 3. Confirm `scrollshift service nonsense` exits 2 and performs no mutation.
-4. In a disposable systemd Linux VM, test fresh `service install`, repeated install, configured start/restart, stop, enable/disable, logs, uninstall, and install over a deliberately unmanaged `scrollshift.service` (must refuse it).
-5. Test installation when no config exists: unit is installed/enabled but remains stopped, with clear next-step output.
-6. Test invalid/ambiguous configuration: `service start` and `restart` must refuse before systemd grabs a device.
+4. In a disposable systemd Linux VM, test fresh `service install`, repeated install, automatic start/restart, stop, enable/disable, logs, uninstall, and install over a deliberately unmanaged `scrollshift.service` (must refuse it).
+5. Test installation when no config exists: a default `mode = auto` config is created, the unit is installed/enabled/started, and no manual device setup is requested.
+6. Test invalid manual-device configuration: `service start` and `restart` must refuse before systemd grabs a device. In auto mode, zero attached mice must remain a valid waiting state.
 7. Test `curl -fsSL https://scrollshift.dev/download.sh | sh` into a clean directory and verify the downloaded binary version.
-8. Test `curl -fsSL https://scrollshift.dev/install.sh | sh` on the published release and verify `/usr/local/bin/scrollshift --version`, managed-unit status, and the unconfigured/configured startup paths.
+8. Test `curl -fsSL https://scrollshift.dev/install.sh | sh` on the published release and verify `/usr/local/bin/scrollshift --version`, managed-unit status, automatic discovery, and running startup path.
 9. Test `uninstall.sh` preserves `/etc/scrollshift`; test `uninstall.sh --purge` only in a disposable environment.
-10. Verify website source and generated `public/` repositories are clean and that all four public shell scripts exactly match the canonical copies in `packaging/`.
+10. On real hardware verify touchpad input is untouched while a USB/Bluetooth mouse is transformed; unplug/replug it, test boot with no mouse attached then hotplug, and if practical test two simultaneous mice.
+11. Verify website source and generated `public/` repositories are clean and that all four public shell scripts exactly match the canonical copies in `packaging/`.
 
 Do not tag if any service lifecycle or public installer gate is only assumed from unit tests. The input-grab privilege boundary and systemd lifecycle require a real disposable-host check before first publication.

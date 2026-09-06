@@ -63,16 +63,16 @@ The recommended release install is:
 curl -fsSL https://scrollshift.dev/install.sh | sh
 ```
 
-The installer verifies the selected GitHub release against `SHA256SUMS`, then invokes ScrollShift's own privileged service installer. The CLI copies the running executable atomically to `/usr/local/bin/scrollshift`, writes a managed `/etc/systemd/system/scrollshift.service`, reloads systemd, and enables the service. It will only start immediately when `/etc/scrollshift/config.conf` exists and passes `scrollshift doctor`.
+The installer verifies the selected GitHub release against `SHA256SUMS`, then invokes ScrollShift's own privileged service installer. The CLI copies the running executable atomically to `/usr/local/bin/scrollshift`, writes a managed `/etc/systemd/system/scrollshift.service`, reloads systemd, and enables the service. On a fresh install it creates `/etc/scrollshift/config.conf` in automatic-discovery mode and starts immediately. ScrollShift classifies input devices using udev/libinput metadata when available, ignores touchpads/touchscreens, and automatically attaches conventional wheel mice as they appear. No `/dev/input/eventN` configuration is required.
 
-Configure a physical mouse once, then start the service:
+The normal first-run path is therefore just:
 
 ```bash
-sudo scrollshift devices
-sudo scrollshift configure /dev/input/eventX
-sudo scrollshift doctor
-sudo scrollshift service start
+curl -fsSL https://scrollshift.dev/install.sh | sh
+scrollshift service status
 ```
+
+For unusual hardware, `sudo scrollshift devices` shows classification/capabilities and `sudo scrollshift configure /dev/input/eventX` switches to a persistent specific-device override.
 
 Service commands follow the same lifecycle API used by the Gantry Go services:
 
