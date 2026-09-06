@@ -39,4 +39,6 @@ jobs:
           shellcheck scripts/verify_release.sh tests/release_verify_tests.sh
           sh -eu tests/release_verify_tests.sh
       - name: Workflow checkout regression check
-        run: python3 scripts/check_workflow_checkout.py .github/workflows/release.yml .github/workflows/ci.yml
+        run: |
+          python3 scripts/check_workflow_checkout.py .github/workflows/release.yml .github/workflows/ci.yml
+          python3 tests/check_workflow_checkout_tests.py

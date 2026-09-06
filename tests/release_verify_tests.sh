@@ -79,26 +79,27 @@ expect_ok "complete matching release after failure cases"
 # ---- GitHub-layer --published asset-name mode ----
 names="$root/published-names"
 write_names() { printf '%b' "$1" > "$names"; }
-# A normal GitHub release carries the expected assets plus the two auto source archives.
-normal_set="$x86\n$arm\nSHA256SUMS\n$tag.tar.gz\n$tag.zip\n"
+# A normal GitHub release carries exactly the three expected assets; GitHub
+# source-code downloads are not release assets and do not appear in the list.
+normal_set="$x86\n$arm\nSHA256SUMS\n"
 
 expect_published_fail() {
-  if "$VERIFY" --published "$version" "$tag" "$names" >/dev/null 2>&1; then fail "expected published-set failure: $1"; fi
+  if "$VERIFY" --published "$version" "$names" >/dev/null 2>&1; then fail "expected published-set failure: $1"; fi
 }
 expect_published_ok() {
-  if ! "$VERIFY" --published "$version" "$tag" "$names" >/dev/null 2>&1; then fail "expected published-set success: $1"; fi
+  if ! "$VERIFY" --published "$version" "$names" >/dev/null 2>&1; then fail "expected published-set success: $1"; fi
 }
 
-# Complete expected set (with benign auto source archives) succeeds.
+# Complete expected set succeeds.
 write_names "$normal_set"
-expect_published_ok "complete published set with source archives"
+expect_published_ok "complete published set"
 
 # Missing one archive is rejected.
-write_names "$arm\nSHA256SUMS\n$tag.tar.gz\n$tag.zip\n"
+write_names "$arm\nSHA256SUMS\n"
 expect_published_fail "published set missing one archive"
 
 # Missing SHA256SUMS is rejected.
-write_names "$x86\n$arm\n$tag.tar.gz\n$tag.zip\n"
+write_names "$x86\n$arm\n"
 expect_published_fail "published set missing SHA256SUMS"
 
 # An unexpected/stale extra asset is rejected even though all required assets are present.
@@ -106,10 +107,10 @@ write_names "$normal_set"
 printf 'stale-0.1.0-previous.tar.gz\n' >> "$names"
 expect_published_fail "unexpected extra published asset"
 
-# A source archive name that does not match the tag is treated as unexpected.
+# A source-archive-style name is not one of the expected assets and is rejected.
 write_names "$normal_set"
-printf 'v0.0.1.tar.gz\n' >> "$names"
-expect_published_fail "stale source archive name is unexpected"
+printf '%s.tar.gz\n' "$tag" >> "$names"
+expect_published_fail "source-archive-style name is unexpected"
 
 # Complete expected set succeeds again.
 write_names "$normal_set"

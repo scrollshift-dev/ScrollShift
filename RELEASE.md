@@ -120,12 +120,12 @@ fix the problem before tagging where possible, and retain exact evidence.
    creating the release. A rerun against an already-existing release is accepted
    only when two layers hold: the complete published GitHub asset-name set is
    exactly the expected public set (both archives and the published
-   `SHA256SUMS`; only GitHub's auto-attached `<tag>.tar.gz`/`<tag>.zip` source
-   archives are tolerated, any other extra asset is rejected via
-   `verify_release.sh --published`), and the three assets' contents satisfy
-   `verify_release.sh` with the published manifest byte-identical to the
-   candidate manifest. Any missing, extra or inconsistent asset fails loudly and
-   is never auto-repaired.
+   `SHA256SUMS`; any name outside the expected three is rejected as an
+   unexpected asset via `verify_release.sh --published` — GitHub source-code
+   downloads are not release assets and never appear in the asset list), and
+   the three assets' contents satisfy `verify_release.sh` with the published
+   manifest byte-identical to the candidate manifest. Any missing, extra or
+   inconsistent asset fails loudly and is never auto-repaired.
    After publication, require `installer-public-smoke` to pass; this proves the
    live website installer matches the tag, verifies the release checksum, and
    installs the tagged release.

@@ -2,27 +2,26 @@
 set -eu
 
 # verify_release.sh VERSION DIR
-# verify_release.sh --published VERSION TAG ASSET-NAME-FILE
+# verify_release.sh --published VERSION ASSET-NAME-FILE
 #
 # DIR mode: validates that DIR contains exactly the public release asset set
 # the verified installer can consume: the two architecture archives and a
 # structurally valid SHA256SUMS manifest with exactly one entry per archive,
 # where every archive checksum matches.
 #
-# --published mode: validates the complete published GitHub asset-name set. Each
-# non-empty line of ASSET-NAME-FILE is checked against the expected public set
-# (the two architecture archives plus SHA256SUMS). GitHub auto-attaches source
-# archives (<TAG>.tar.gz and <TAG>.zip) to every release, which are tolerated as
-# benign; any other name is an unexpected published asset and is rejected.
+# --published mode: validates the complete published GitHub asset-name set.
+# Each non-empty line of ASSET-NAME-FILE is checked against the expected public
+# set (the two architecture archives plus SHA256SUMS); any name outside the
+# expected three is an unexpected published asset and is rejected. GitHub
+# source-code downloads are not release assets and never appear in this list.
 #
 # Both modes exit non-zero with a diagnostic on any inconsistency and never
 # modify anything; the caller decides whether to create or accept a release.
 
 if [ "${1:-}" = "--published" ]; then
-  [ "$#" -eq 4 ] || { echo "usage: verify_release.sh --published VERSION TAG ASSET-NAME-FILE" >&2; exit 1; }
+  [ "$#" -eq 3 ] || { echo "usage: verify_release.sh --published VERSION ASSET-NAME-FILE" >&2; exit 1; }
   version=$2
-  tag=$3
-  names=$4
+  names=$3
   x86="scrollshift-$version-linux-x86_64.tar.gz"
   arm="scrollshift-$version-linux-aarch64.tar.gz"
 
@@ -33,14 +32,12 @@ if [ "${1:-}" = "--published" ]; then
     grep -qx "$asset" "$names" || { echo "published release is missing $asset" >&2; missing=1; }
   done
 
-  # Isolate genuine unexpected assets: drop empty lines, the three expected
-  # names, and the two GitHub auto-attached source archives.
+  # Isolate genuine unexpected assets: the published set must be exactly the
+  # three expected names.
   extra=$(grep -v '^$' "$names" \
     | grep -vx "$x86" \
     | grep -vx "$arm" \
-    | grep -vx "SHA256SUMS" \
-    | grep -vx "$tag.tar.gz" \
-    | grep -vx "$tag.zip" || true)
+    | grep -vx "SHA256SUMS" || true)
 
   if [ "$missing" -eq 1 ] || [ -n "$extra" ]; then
     [ -z "$extra" ] || { echo "unexpected published assets:" >&2; printf '%s\n' "$extra" >&2; }
