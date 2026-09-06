@@ -19,8 +19,10 @@ install: build
 	cmake --install $(BUILD_DIR)
 	/usr/local/bin/scrollshift service install
 	@echo
-	@echo "Next: sudo scrollshift devices"
-	@echo "Then: sudo scrollshift configure /dev/input/eventN && sudo scrollshift service start"
+	@echo "ScrollShift uses automatic mouse discovery by default; no device configuration is required."
+	@echo "Check it with: sudo scrollshift service status"
+	@echo "If an existing manual configuration kept the service stopped, run: sudo scrollshift service start"
+	@echo "Use `scrollshift devices` and `scrollshift configure DEVICE` only for a manual override."
 
 uninstall:
 	@if [ -x /usr/local/bin/scrollshift ]; then /usr/local/bin/scrollshift service uninstall; fi
