@@ -33,3 +33,8 @@ jobs:
           shellcheck packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh
       - name: Installer checksum failure cases
         run: sh -eu tests/installer_checksum_tests.sh
+      - name: Release verification partial cases
+        run: |
+          sh -n scripts/verify_release.sh
+          shellcheck scripts/verify_release.sh tests/release_verify_tests.sh
+          sh -eu tests/release_verify_tests.sh

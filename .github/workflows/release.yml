@@ -53,6 +53,10 @@ jobs:
           done
       - name: Installer checksum failure cases
         run: sh -eu tests/installer_checksum_tests.sh
+      - name: Release verification partial cases
+        run: |
+          sh -n scripts/verify_release.sh
+          sh -eu tests/release_verify_tests.sh
 
   website-parity:
     runs-on: ubuntu-latest
@@ -77,54 +81,35 @@ jobs:
       - name: Create checksums
         working-directory: dist
         run: sha256sum scrollshift-* > SHA256SUMS
-      - name: Verify expected assets before publication
-        run: |
-          set -eu
-          version="${GITHUB_REF_NAME#v}"
-          cd dist
-          test "$(ls scrollshift-*.tar.gz | wc -l)" = "2"
-          for archive in scrollshift-*; do
-            case "$archive" in
-              scrollshift-"$version"-linux-x86_64.tar.gz|scrollshift-"$version"-linux-aarch64.tar.gz) ;;
-              *) echo "unexpected archive in dist: $archive" >&2; exit 1;;
-            esac
-          done
-          awk '{ if (NF != 2 || length($1) != 64 || $1 !~ /^[0-9a-f]+$/) { print "bad checksum line: " $0 > "/dev/stderr"; exit 1 } }' SHA256SUMS
-          for archive in scrollshift-*; do
-            expected=$(awk -v f="$archive" '$2==f {print $1}' SHA256SUMS)
-            actual=$(sha256sum "$archive" | awk '{print $1}')
-            test "$actual" = "$expected"
-          done
+      - name: Verify candidate release asset set
+        run: sh scripts/verify_release.sh "${GITHUB_REF_NAME#v}" dist
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          version="${GITHUB_REF_NAME#v}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            version="${GITHUB_REF_NAME#v}"
-            cd dist
-            ok=1
-            for platform in linux-x86_64 linux-aarch64; do
-              archive="scrollshift-$version-$platform.tar.gz"
-              if ! gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' | grep -qx "$archive"; then
-                echo "Existing release is missing $archive; refusing to leave a partial release" >&2
-                ok=0
-                continue
+            # An existing release is accepted only when it is already exactly
+            # usable by the public verified installer: both architecture
+            # archives AND the published SHA256SUMS, whose checksums match the
+            # published archives, byte-identical to the candidate manifest.
+            # Anything else fails loudly; published releases are never
+            # auto-repaired.
+            rm -rf /tmp/published && mkdir -p /tmp/published
+            for asset in "scrollshift-$version-linux-x86_64.tar.gz" "scrollshift-$version-linux-aarch64.tar.gz" "SHA256SUMS"; do
+              if ! gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' | grep -qx "$asset"; then
+                echo "Existing release is missing $asset; refusing to accept a partial release" >&2
+                exit 1
               fi
-              gh release download "$GITHUB_REF_NAME" --pattern "$archive" --clobber -D /tmp/release-verify
-              expected=$(awk -v f="$archive" '$2==f {print $1}' SHA256SUMS)
-              actual=$(sha256sum "/tmp/release-verify/$archive" | awk '{print $1}')
-              if [ "$actual" != "$expected" ]; then
-                echo "Existing release asset $archive checksum mismatch" >&2
-                ok=0
-              fi
+              gh release download "$GITHUB_REF_NAME" --pattern "$asset" --clobber -D /tmp/published
             done
-            if [ "$ok" -eq 1 ]; then
-              echo "Existing release already has the complete expected asset set with correct checksums; leaving it untouched"
-            else
-              echo "Existing release is incomplete or inconsistent; fix it manually before retrying" >&2
+            sh scripts/verify_release.sh "$version" /tmp/published
+            if ! cmp -s dist/SHA256SUMS /tmp/published/SHA256SUMS; then
+              echo "Existing release manifest differs from the candidate manifest; refusing to accept it" >&2
               exit 1
             fi
+            echo "Existing release is exactly usable by the public verified installer; leaving it untouched"
           else
             gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
           fi

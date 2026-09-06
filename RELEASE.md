@@ -113,10 +113,15 @@ fix the problem before tagging where possible, and retain exact evidence.
 3. Watch `.github/workflows/release.yml`. Both Linux artifact jobs (x86-64,
    aarch64, built with `SCROLLSHIFT_WARNINGS_AS_ERRORS=ON`), `installer-preflight`,
    and `website-parity` (public website scripts byte-identical to `packaging/`)
-   must all succeed before the GitHub release is created; the `publish` job also
-   verifies the expected archive set and `SHA256SUMS` before creating the
-   release, and a rerun against an already-existing release fails loudly unless
-   the release has the complete expected asset set with matching checksums.
+   must all succeed before the GitHub release is created; the `publish` job
+   verifies the candidate asset set with `scripts/verify_release.sh` (both
+   architecture archives plus a structurally valid `SHA256SUMS` with exactly one
+   matching entry per archive) before creating the release. A rerun against an
+   already-existing release is accepted only when that release already contains
+   the complete expected asset set — both archives **and** the published
+   `SHA256SUMS` — whose checksums match the published archives and whose
+   manifest is byte-identical to the candidate manifest; any missing, extra or
+   inconsistent asset fails loudly and is never auto-repaired.
    After publication, require `installer-public-smoke` to pass; this proves the
    live website installer matches the tag, verifies the release checksum, and
    installs the tagged release.
@@ -141,8 +146,8 @@ fix the problem before tagging where possible, and retain exact evidence.
 
 Before the first public tag, additionally require all of the following at the exact release-candidate SHA:
 
-1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass (Debug warnings-as-errors plus ASan/UBSan are also expected; the automated suite now includes the classifier matrix, service-unit ownership/migration matrix, auto-mode lifecycle, backoff policy, and installer checksum failure cases).
-2. `sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh` and `shellcheck` on all four (invoke individually on shells that accept one script at a time); run `tests/installer_checksum_tests.sh`.
+1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass (Debug warnings-as-errors plus ASan/UBSan are also expected; the automated suite now includes the classifier matrix, service-unit ownership/migration matrix, auto-mode lifecycle, backoff policy, installer checksum failure cases, and release verification partial cases).
+2. `sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh` and `shellcheck` on all four (invoke individually on shells that accept one script at a time); run `tests/installer_checksum_tests.sh` and `tests/release_verify_tests.sh`.
 3. Confirm `scrollshift service nonsense` exits 2 and performs no mutation.
 4. In a disposable systemd Linux VM, test fresh `service install`, repeated install, automatic start/restart, stop, enable/disable, logs, uninstall, migration from a known historical unit (including a deliberately failed `daemon-reload` restoring the previous unit), and install over a deliberately unmanaged `scrollshift.service` (must refuse it).
 5. Test installation when no config exists: a default `mode = auto` config is created, the unit is installed/enabled/started, and no manual device setup is requested.
