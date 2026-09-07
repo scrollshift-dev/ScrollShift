@@ -182,8 +182,6 @@ ctest --test-dir build --output-on-failure
 
 The binary now implements read-only discovery/trace tooling, temporary relay/acceleration diagnostics, persistent configuration generation, a long-running daemon, and systemd service controls. The current automated suite includes CLI, input-fixture, virtual-output planner, velocity, packet-transform and configuration/selector tests, built with warnings treated as errors.
 
-## Development version
-
 ## Release state
 
 - **v0.1.0** — historical initial release, immutable, at commit `21ce000343bd435b189e4cc0ec4518e5441ebd53` (published 2026-08-23). Pre-dates the rename and the pre-release hardening series.

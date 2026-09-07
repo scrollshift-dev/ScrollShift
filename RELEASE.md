@@ -55,9 +55,10 @@ Proportionately include:
 7. Inspect repository state for generated/debug residue.
 
 Repository tests passing does not prove a release archive is usable. After the
-release is public, `installer-public-smoke` in `release.yml` installs the exact
-tagged release through the live website installer on Linux and verifies the
-installed binary version.
+release is public, `public-download-smoke` in `release.yml` resolves the exact
+tagged release through the live public `download.sh`, verifies the
+checksum-verified download/artifact version, and confirms live script parity.
+The privileged public `install.sh` lifecycle is a separate disposable-host gate.
 
 ## Website publication
 
@@ -71,7 +72,7 @@ on `stage`, and verify both trees are clean.
 The canonical `packaging/install.sh` in this repository is served byte-for-byte
 as `https://scrollshift.dev/install.sh`. When the installer changes,
 copy it to the website root `install.sh` (and compatibility alias `install`) and commit the generated public script copies
-so `installer-public-smoke` keeps passing.
+so `public-download-smoke` keeps passing.
 
 ## Version and notes
 
@@ -131,9 +132,12 @@ fix the problem before tagging where possible, and retain exact evidence.
    the three assets' contents satisfy `verify_release.sh` with the published
    manifest byte-identical to the candidate manifest. Any missing, extra or
    inconsistent asset fails loudly and is never auto-repaired.
-   After publication, require `installer-public-smoke` to pass; this proves the
-   live website installer matches the tag, verifies the release checksum, and
-   installs the tagged release.
+   After publication, require `public-download-smoke` to pass; this verifies the
+   live public download path (resolves the tag, enforces the published
+   checksum, artifact version) and live script parity. The privileged public
+   `install.sh`/service lifecycle remains a disposable-systemd-host gate that
+   must be exercised separately before claiming the full public installation
+   path.
 4. Confirm the release contains exactly the expected Linux archives and
    `SHA256SUMS`, and that each archive name and embedded executable version
    match `X.Y.Z`.
@@ -151,20 +155,44 @@ fix the problem before tagging where possible, and retain exact evidence.
 2. Update the website install/download instructions only with availability that
    has been confirmed from the public release.
 
-## First-release service/distribution gates
+## Release gates and evidence
 
-Before the first public tag, additionally require all of the following at the exact release-candidate SHA:
+Gates are assessed at the exact release-candidate SHA. They are split into
+release-critical deterministic/CI gates (enforced automatically and required
+before tagging), public download/install gates, real-hardware evidence already
+obtained, and outstanding non-blocking hardware coverage. Anything not actually
+exercised is recorded as outstanding rather than assumed or marked passed.
 
-1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass (Debug warnings-as-errors plus ASan/UBSan are also expected; the automated suite now includes the classifier matrix, service-unit ownership/migration matrix, auto-mode lifecycle, backoff policy, installer checksum failure cases, and release verification partial cases).
-2. `sh -n packaging/install.sh packaging/download.sh packaging/update.sh packaging/uninstall.sh` and `shellcheck` on all four (invoke individually on shells that accept one script at a time); run `tests/installer_checksum_tests.sh` and `tests/release_verify_tests.sh`.
+### Release-critical deterministic/CI gates (enforced in CI and at release)
+
+1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass (Debug warnings-as-errors plus ASan/UBSan are also expected; the automated suite includes the classifier matrix, service-unit ownership/migration matrix, auto-mode lifecycle, backoff policy, installer checksum failure cases, release verification partial cases, and the workflow checkout ordering regression).
+2. `sh -n` and `shellcheck` on all four public scripts; run `tests/installer_checksum_tests.sh` and `tests/release_verify_tests.sh`.
 3. Confirm `scrollshift service nonsense` exits 2 and performs no mutation.
-4. In a disposable systemd Linux VM, test fresh `service install`, repeated install, automatic start/restart, stop, enable/disable, logs, uninstall, migration from a known historical unit (including a deliberately failed `daemon-reload` restoring the previous unit), and install over a deliberately unmanaged `scrollshift.service` (must refuse it).
-5. Test installation when no config exists: a default `mode = auto` config is created, the unit is installed/enabled/started, and no manual device setup is requested.
-6. Test invalid manual-device configuration: `service start` and `restart` must refuse before systemd grabs a device. In auto mode, zero attached mice must remain a valid waiting state.
-7. Test `curl -fsSL https://scrollshift.dev/download.sh | sh` into a clean directory and verify the downloaded binary version.
-8. Test `curl -fsSL https://scrollshift.dev/install.sh | sh` on the published release and verify `/usr/local/bin/scrollshift --version`, managed-unit status, automatic discovery, and running startup path.
-9. Test `uninstall.sh` preserves `/etc/scrollshift`; test `uninstall.sh --purge` only in a disposable environment.
-10. On real hardware verify touchpad input is untouched while a USB/Bluetooth mouse is transformed; unplug/replug it, test boot with no mouse attached then hotplug, and if practical test two simultaneous mice.
-11. Verify website source and generated `public/` repositories are clean and that all four public shell scripts exactly match the canonical copies in `packaging/` (this is now enforced pre-publication by the `website-parity` job).
+4. Verify website source and generated `public/` repositories are clean and all public shell scripts are byte-identical to `packaging/` (enforced pre-publication by the `website-parity` job).
 
-Do not tag if any service lifecycle or public installer gate is only assumed from unit tests. The input-grab privilege boundary and systemd lifecycle require a real disposable-host check before first publication.
+These passed for v0.1.1, and the tag-triggered release workflow enforces them on every release.
+
+### Public download/install gates
+
+- **Public download path** (resolves `latest`, fetches and enforces the published `SHA256SUMS`, verified download/extraction, artifact version): verified for v0.1.1 locally and by the release workflow's `public-download-smoke` job.
+- **Public `install.sh` privileged lifecycle** (fresh install, `service install`, default `mode = auto` config creation, managed unit enable/start, `/usr/local/bin/scrollshift --version`), public `update.sh`, and public `uninstall.sh` with configuration preservation (and `--purge` only in a disposable environment): **outstanding**. These require a disposable systemd host that was not available at release time; do not mark them passed until exercised there.
+
+### Real-hardware evidence already obtained
+
+- Automatic conventional-mouse discovery selected the user's intended physical mouse, and ordinary wheel scrolling works with it (exercised by the user before release).
+- Most ordinary service/mouse lifecycle behaviour was exercised manually during development.
+
+### Outstanding non-blocking hardware coverage
+
+The following require hardware the user does not own and are deliberately
+non-blocking for v0.1.x (to be covered in a later cycle rather than treated as
+release blockers):
+
+- two simultaneous physical mice;
+- touchscreen isolation;
+- unusual composite receivers;
+- broader unusual Linux pointing-device combinations.
+
+Do not claim unexercised hardware combinations as passed. The input-grab
+privilege boundary and the full systemd lifecycle remain disposable-host items
+to exercise at the next release cycle.

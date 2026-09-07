@@ -120,9 +120,12 @@ jobs:
             gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
           fi
 
-  installer-public-smoke:
+  public-download-smoke:
     needs: publish
     runs-on: ubuntu-latest
+    # Verifies the public download path and live script parity only. It does not
+    # execute install.sh or the privileged service lifecycle; that remains a
+    # disposable-systemd-host gate recorded in RELEASE.md.
     steps:
       - uses: actions/checkout@v4
       - name: Download tagged release through public download script
