@@ -158,8 +158,9 @@ fix the problem before tagging where possible, and retain exact evidence.
 ## Release gates and evidence
 
 Gates are assessed at the exact release-candidate SHA. They are split into
-release-critical deterministic/CI gates (enforced automatically and required
-before tagging), public download/install gates, real-hardware evidence already
+release-critical deterministic/CI gates (required before tagging and covered
+across pre-tag validation and automated CI/release workflows), public
+download/install gates, real-hardware evidence already
 obtained, and outstanding non-blocking hardware coverage. Anything not actually
 exercised is recorded as outstanding rather than assumed or marked passed.
 
