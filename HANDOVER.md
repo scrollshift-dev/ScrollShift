@@ -250,7 +250,7 @@ These are experimental tuning presets, not frozen user configuration. Real-hardw
 
 A first production-shaped runtime now exists:
 
-- `scrollshift configure DEVICE [--profile NAME]` inspects a real device and writes `/etc/scrollshift/config.conf`;
+- `scrollshift configure DEVICE [--profile NAME] [--force]` inspects a real device and writes `/etc/scrollshift/config.conf`; `--force` permits an explicitly selected wheel-capable non-relative device without changing automatic discovery;
 - configuration persists vendor/product + normalized kernel name, never `/dev/input/eventN`;
 - matching requires a relative wheel pointer and explicitly excludes ScrollShift virtual devices;
 - zero matches cause the daemon to wait, while multiple matches cause it to refuse capture rather than guess;

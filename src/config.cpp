@@ -70,6 +70,10 @@ std::optional<DaemonConfig> parse_config(std::istream& input, std::string& error
     } else if (key == "device_name") {
       if (value.empty()) { error = "line " + std::to_string(line_no) + ": device_name cannot be empty"; return std::nullopt; }
       config.device.name = value;
+    } else if (key == "allow_non_pointer_wheel") {
+      if (value == "true") config.allow_non_pointer_wheel = true;
+      else if (value == "false") config.allow_non_pointer_wheel = false;
+      else { error = "line " + std::to_string(line_no) + ": allow_non_pointer_wheel must be true or false"; return std::nullopt; }
     } else if (key == "profile") {
       if (!valid_profile(value)) { error = "line " + std::to_string(line_no) + ": unknown profile '" + value + "'"; return std::nullopt; }
       config.profile = value;
@@ -113,6 +117,7 @@ std::string serialize_config(const DaemonConfig& config) {
         << "device_vendor = 0x" << std::hex << std::setw(4) << std::setfill('0') << config.device.vendor << '\n'
         << "device_product = 0x" << std::setw(4) << config.device.product << std::dec << '\n';
     if (!config.device.name.empty()) out << "device_name = " << config.device.name << '\n';
+    if (config.allow_non_pointer_wheel) out << "allow_non_pointer_wheel = true\n";
   }
   out << "profile = " << config.profile << '\n'
       << "reconnect_ms = " << config.reconnect_ms << '\n';
@@ -134,11 +139,11 @@ bool matches_selector(const DeviceInfo& device, const DeviceSelector& selector) 
          (selector.name.empty() || device.name == selector.name);
 }
 
-bool is_capture_candidate(const DeviceInfo& device) {
-  if (!device.relative_pointer) return false;
+bool is_capture_candidate(const DeviceInfo& device, bool allow_non_pointer_wheel) {
   if (!(device.wheel || device.hi_res_wheel || device.horizontal_wheel || device.hi_res_horizontal_wheel)) return false;
   if (device.vendor == 0x5357) return false;
   if (device.name.starts_with("ScrollShift ")) return false;
+  if (!allow_non_pointer_wheel && !device.relative_pointer) return false;
   return true;
 }
 
@@ -172,17 +177,19 @@ std::vector<DeviceInfo> automatic_mouse_candidates(const std::vector<DeviceInfo>
 }
 
 std::vector<DeviceInfo> matching_capture_devices(const std::vector<DeviceInfo>& devices,
-                                                 const DeviceSelector& selector) {
+                                                 const DeviceSelector& selector,
+                                                 bool allow_non_pointer_wheel) {
   std::vector<DeviceInfo> matches;
   for (const auto& device : devices)
-    if (is_capture_candidate(device) && matches_selector(device, selector)) matches.push_back(device);
+    if (is_capture_candidate(device, allow_non_pointer_wheel) && matches_selector(device, selector)) matches.push_back(device);
   return matches;
 }
 
 DeviceMatchDiagnosis diagnose_device_match(const std::vector<DeviceInfo>& devices,
-                                           const DeviceSelector& selector) {
+                                           const DeviceSelector& selector,
+                                           bool allow_non_pointer_wheel) {
   DeviceMatchDiagnosis diagnosis;
-  diagnosis.matches = matching_capture_devices(devices, selector);
+  diagnosis.matches = matching_capture_devices(devices, selector, allow_non_pointer_wheel);
   if (diagnosis.matches.empty()) diagnosis.state = DeviceMatchState::Missing;
   else if (diagnosis.matches.size() == 1) diagnosis.state = DeviceMatchState::Unique;
   else diagnosis.state = DeviceMatchState::Ambiguous;
@@ -191,17 +198,24 @@ DeviceMatchDiagnosis diagnose_device_match(const std::vector<DeviceInfo>& device
 
 int write_config_for_device(const std::filesystem::path& device_path,
                             const std::filesystem::path& config_path,
-                            const std::string& profile, std::ostream& output) {
+                            const std::string& profile, std::ostream& output,
+                            bool allow_non_pointer_wheel) {
   if (!valid_profile(profile)) { output << "scrollshift: unknown acceleration profile: " << profile << '\n'; return 2; }
   const auto device = inspect_input_device(device_path);
   if (!device) { output << "scrollshift: cannot inspect " << device_path << '\n'; return 1; }
-  if (!is_capture_candidate(*device)) { output << "scrollshift: " << device_path << " is not a supported wheel pointer\n"; return 1; }
+  if (!is_capture_candidate(*device, allow_non_pointer_wheel)) { output << "scrollshift: " << device_path << " is not a supported wheel pointer\n"; return 1; }
+  if (allow_non_pointer_wheel && !device->relative_pointer) {
+    output << "Warning: forcing manual configuration of a wheel-capable non-relative pointer.\n"
+           << "Automatic discovery remains unchanged; use this only for unusual/virtual input devices.\n";
+  }
   std::error_code ec;
   if (config_path.has_parent_path()) std::filesystem::create_directories(config_path.parent_path(), ec);
   if (ec) { output << "scrollshift: cannot create " << config_path.parent_path() << ": " << ec.message() << '\n'; return 1; }
   std::ofstream out(config_path, std::ios::trunc);
   if (!out) { output << "scrollshift: cannot write " << config_path << '\n'; return 1; }
-  out << serialize_config(config_for_device(*device, profile));
+  auto config = config_for_device(*device, profile);
+  config.allow_non_pointer_wheel = allow_non_pointer_wheel && !device->relative_pointer;
+  out << serialize_config(config);
   out.close();
   if (!out) { output << "scrollshift: failed while writing " << config_path << '\n'; return 1; }
   output << "Configured " << device->name << " (" << std::hex << std::setfill('0') << std::setw(4)

@@ -42,6 +42,15 @@ int main() {
   virtual_device.vendor=0x5357; virtual_device.product=0x0003; virtual_device.name="ScrollShift Accelerated";
   assert(!is_capture_candidate(virtual_device));
 
+  DeviceInfo qemu_tablet = real;
+  qemu_tablet.name="QEMU QEMU USB Tablet"; qemu_tablet.relative_pointer=false;
+  qemu_tablet.has_rel_x=false; qemu_tablet.has_rel_y=false; qemu_tablet.abs_axes=true;
+  assert(!is_capture_candidate(qemu_tablet));
+  assert(is_capture_candidate(qemu_tablet, true));
+  DeviceInfo no_wheel = qemu_tablet; no_wheel.wheel=false; no_wheel.hi_res_wheel=false;
+  assert(!is_capture_candidate(no_wheel, true));
+  assert(!is_capture_candidate(virtual_device, true));
+
   DeviceInfo wrong = real; wrong.name="Consumer Control";
   assert(!matches_selector(wrong, config->device));
 
@@ -56,10 +65,19 @@ int main() {
   const auto ambiguous = diagnose_device_match({real, duplicate}, config->device);
   assert(ambiguous.state == DeviceMatchState::Ambiguous && ambiguous.matches.size() == 2);
 
+  DeviceSelector qemu_selector{qemu_tablet.vendor, qemu_tablet.product, qemu_tablet.name};
+  assert(diagnose_device_match({qemu_tablet}, qemu_selector).state == DeviceMatchState::Missing);
+  assert(diagnose_device_match({qemu_tablet}, qemu_selector, true).state == DeviceMatchState::Unique);
+
   std::istringstream automatic("mode = auto\nprofile = balanced\nreconnect_ms = 500\n");
   auto auto_config = parse_config(automatic, error);
   assert(auto_config && auto_config->auto_discover);
   assert(serialize_config(*auto_config).find("mode = auto") != std::string::npos);
+
+  std::istringstream forced("mode = device\ndevice_vendor = 0x0627\ndevice_product = 0x0001\ndevice_name = QEMU QEMU USB Tablet\nallow_non_pointer_wheel = true\nprofile = balanced\n");
+  auto forced_config = parse_config(forced, error);
+  assert(forced_config && forced_config->allow_non_pointer_wheel);
+  assert(serialize_config(*forced_config).find("allow_non_pointer_wheel = true") != std::string::npos);
 
   const auto roundtrip_text = serialize_config(*config);
   std::istringstream roundtrip(roundtrip_text);

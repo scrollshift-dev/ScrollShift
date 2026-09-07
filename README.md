@@ -72,7 +72,7 @@ curl -fsSL https://scrollshift.dev/install.sh | sh
 scrollshift service status
 ```
 
-For unusual hardware, `sudo scrollshift devices` shows classification/capabilities and `sudo scrollshift configure /dev/input/eventX` switches to a persistent specific-device override.
+For unusual hardware, `sudo scrollshift devices` shows classification/capabilities and `sudo scrollshift configure /dev/input/eventX` switches to a persistent specific-device override. If a VM routes wheel events through an absolute tablet-style device, `sudo scrollshift configure /dev/input/eventX --force` explicitly permits that selected wheel-capable device while leaving automatic discovery conservative.
 
 Service commands follow the same lifecycle API used by the Gantry Go services:
 
@@ -109,7 +109,7 @@ profile = balanced
 reconnect_ms = 1000
 ```
 
-`mode = auto` is the default: ScrollShift discovers conventional wheel mice automatically using udev input classification when available, and only falls back to conservative evdev capability checks when classification metadata is missing. Touchpads, touchscreens, joysticks, tablets and keyboard auxiliary nodes are never selected. Do not hand-edit event-node numbers into configuration. For unusual hardware, `sudo scrollshift configure /dev/input/eventX` writes a `mode = device` override that persists stable vendor/product/name identity, never an event-node path.
+`mode = auto` is the default: ScrollShift discovers conventional wheel mice automatically using udev input classification when available, and only falls back to conservative evdev capability checks when classification metadata is missing. Touchpads, touchscreens, joysticks, tablets and keyboard auxiliary nodes are never selected. Do not hand-edit event-node numbers into configuration. For unusual hardware, `sudo scrollshift configure /dev/input/eventX` writes a `mode = device` override that persists stable vendor/product/name identity, never an event-node path. `--force` additionally permits a manually selected wheel-capable non-relative device (for example, some QEMU/SPICE tablet devices); it never broadens automatic discovery.
 
 ## Diagnostics and reconnaissance
 

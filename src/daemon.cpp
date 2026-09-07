@@ -124,8 +124,8 @@ int run_doctor(const std::filesystem::path& config_path, std::ostream& output,
     return 0;
   }
 
-  const auto diagnosis = diagnose_device_match(devices, config->device);
-  output << "Mode: manual device override\n"
+  const auto diagnosis = diagnose_device_match(devices, config->device, config->allow_non_pointer_wheel);
+  output << "Mode: manual device override" << (config->allow_non_pointer_wheel ? " (forced non-relative wheel allowed)" : "") << "\n"
          << "Device: " << std::hex << config->device.vendor << ':' << config->device.product << std::dec;
   if (!config->device.name.empty()) output << "  " << config->device.name;
   output << '\n' << "Match state: " << match_state_name(diagnosis.state) << '\n';
@@ -242,7 +242,7 @@ int run_daemon(const std::filesystem::path& config_path, std::ostream& output,
 
   DeviceMatchState last_state = DeviceMatchState::Unique;
   while (!relay_stop_requested()) {
-    const auto diagnosis = diagnose_device_match(discover_input_devices(input_root, udev_data_root), config->device);
+    const auto diagnosis = diagnose_device_match(discover_input_devices(input_root, udev_data_root), config->device, config->allow_non_pointer_wheel);
     if (diagnosis.state == DeviceMatchState::Missing) {
       if (last_state != diagnosis.state) {
         output << "Waiting for configured mouse...\n";

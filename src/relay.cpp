@@ -59,6 +59,19 @@ void clone_capabilities(int source,int target) {
     if(::ioctl(source,EVIOCGBIT(EV_REL,sizeof(bits)),bits.data())<0) throw std::runtime_error("cannot read relative capabilities");
     for(unsigned c=0;c<=REL_MAX;++c) if(bit_set(bits,c)) must_ioctl(target,UI_SET_RELBIT,static_cast<int>(c),"UI_SET_RELBIT");
   }
+  if(bit_set(ev,EV_ABS)) {
+    must_ioctl(target,UI_SET_EVBIT,EV_ABS,"UI_SET_EVBIT EV_ABS");
+    std::array<unsigned long,(ABS_MAX/kBitsPerWord)+2> bits{};
+    if(::ioctl(source,EVIOCGBIT(EV_ABS,sizeof(bits)),bits.data())<0) throw std::runtime_error("cannot read absolute capabilities");
+    for(unsigned c=0;c<=ABS_MAX;++c) if(bit_set(bits,c)) {
+      input_absinfo info{};
+      if(::ioctl(source,EVIOCGABS(c),&info)<0) throw std::runtime_error("cannot read absolute axis information");
+      uinput_abs_setup abs{};
+      abs.code=static_cast<__u16>(c);
+      abs.absinfo=info;
+      if(::ioctl(target,UI_ABS_SETUP,&abs)<0) throw std::runtime_error(std::string("UI_ABS_SETUP: ")+std::strerror(errno));
+    }
+  }
   if(bit_set(ev,EV_KEY)) {
     must_ioctl(target,UI_SET_EVBIT,EV_KEY,"UI_SET_EVBIT EV_KEY");
     std::array<unsigned long,(KEY_MAX/kBitsPerWord)+2> bits{};

@@ -23,7 +23,7 @@ void print_help() {
       << "Usage:\n"
       << "  scrollshift devices\n"
       << "  scrollshift environment\n"
-      << "  scrollshift configure DEVICE [--profile NAME] [--config FILE]\n"
+      << "  scrollshift configure DEVICE [--profile NAME] [--config FILE] [--force]\n"
       << "  scrollshift daemon [--config FILE]\n"
       << "  scrollshift doctor [--config FILE]\n"
       << "  scrollshift service install|uninstall|start|stop|restart|status|enable|disable|logs [--follow]\n"
@@ -72,13 +72,15 @@ int main(int argc, char** argv) {
   if (arg == "configure" && argc >= 3) {
     std::string profile = "balanced";
     std::filesystem::path config_path = "/etc/scrollshift/config.conf";
+    bool force = false;
     for (int i = 3; i < argc; ++i) {
       const std::string_view opt{argv[i]};
       if (opt == "--profile" && i + 1 < argc) profile = argv[++i];
       else if (opt == "--config" && i + 1 < argc) config_path = argv[++i];
+      else if (opt == "--force") force = true;
       else { std::cerr << "scrollshift: invalid configure option: " << opt << '\n'; return 2; }
     }
-    return scrollshift::write_config_for_device(argv[2], config_path, profile, std::cout);
+    return scrollshift::write_config_for_device(argv[2], config_path, profile, std::cout, force);
   }
   if (arg == "daemon") {
     std::filesystem::path config_path = "/etc/scrollshift/config.conf";
