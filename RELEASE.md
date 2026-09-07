@@ -2,7 +2,7 @@
 
 ## Authority and current state
 
-The development executable currently reports `scrollshift 0.1.0`
+The development executable currently reports `scrollshift 0.1.1`
 (`scrollshift --version`; defined in `include/scrollshift/version.hpp`). The
 repository remote is `scrollshift-dev/ScrollShift`. Exact tag, artifact, and
 public release conventions follow the evidence in this document and the actual

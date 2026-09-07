@@ -184,7 +184,7 @@ The binary now implements read-only discovery/trace tooling, temporary relay/acc
 
 ## Development version
 
-Current development version: **0.1.0** (`scrollshift --version`; also the CMake project version). Version identity is a deliberate pre-release 0.x until the safety and compatibility model is demonstrated at the first-release hardware gates.
+Current development version: **0.1.1** (`scrollshift --version`; also the CMake project version). Version identity is a deliberate pre-release 0.x until the safety and compatibility model is demonstrated at the first-release hardware gates.
 
 Do not call an early experimental input grab `1.0`. Versioning should remain explicitly developmental until the safety and compatibility model is established.
 
