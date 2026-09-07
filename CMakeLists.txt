@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ScrollShift VERSION 0.1.1 LANGUAGES CXX)
+project(ScrollShift VERSION 0.1.2 LANGUAGES CXX)
 include(GNUInstallDirs)
 option(SCROLLSHIFT_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 

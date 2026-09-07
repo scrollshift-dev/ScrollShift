@@ -184,9 +184,13 @@ The binary now implements read-only discovery/trace tooling, temporary relay/acc
 
 ## Development version
 
-Current development version: **0.1.1** (`scrollshift --version`; also the CMake project version). Version identity is a deliberate pre-release 0.x until the safety and compatibility model is demonstrated at the first-release hardware gates.
+## Release state
 
-Do not call an early experimental input grab `1.0`. Versioning should remain explicitly developmental until the safety and compatibility model is established.
+- **v0.1.0** — historical initial release, immutable, at commit `21ce000343bd435b189e4cc0ec4518e5441ebd53` (published 2026-08-23). Pre-dates the rename and the pre-release hardening series.
+- **v0.1.1** — first hardened/publicity-ready release, at commit `ac973dd925cf62a76c85c363665a4be8e7533ff6` (tag object `bf701f74d977ca74776cd07041b5c2b5dadb2c13`, published 2026-09-07). Automatic conventional-mouse discovery, conservative non-mouse exclusion, hotplug/backoff, Gantry-style service lifecycle with safe historical-unit migration, verified installers, and strengthened release verification.
+- **Current development version: 0.1.2** (`scrollshift --version`; also the CMake project version).
+
+Versioning should remain explicitly developmental until the safety and compatibility model is fully established; do not call an early experimental input grab `1.0`.
 
 ## First ten checkpoints
 

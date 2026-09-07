@@ -2,11 +2,16 @@
 
 ## Authority and current state
 
-The development executable currently reports `scrollshift 0.1.1`
+The development executable currently reports `scrollshift 0.1.2`
 (`scrollshift --version`; defined in `include/scrollshift/version.hpp`). The
 repository remote is `scrollshift-dev/ScrollShift`. Exact tag, artifact, and
 public release conventions follow the evidence in this document and the actual
 Git/release state.
+
+## Released versions
+
+- **v0.1.0** — historical initial release at commit `21ce000` (published 2026-08-23); immutable.
+- **v0.1.1** — first hardened/publicity-ready release at commit `ac973dd925cf62a76c85c363665a4be8e7533ff6` (tag object `bf701f74d977ca74776cd07041b5c2b5dadb2c13`, published 2026-09-07). Assets: `scrollshift-0.1.1-linux-x86_64.tar.gz`, `scrollshift-0.1.1-linux-aarch64.tar.gz`, `SHA256SUMS`.
 
 ScrollShift is a Linux-only input daemon (evdev/uinput). Cross-platform
 compatibility is not a release concern; cross-distribution/desktop compatibility
