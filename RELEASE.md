@@ -163,18 +163,36 @@ before tagging), public download/install gates, real-hardware evidence already
 obtained, and outstanding non-blocking hardware coverage. Anything not actually
 exercised is recorded as outstanding rather than assumed or marked passed.
 
-### Release-critical deterministic/CI gates (enforced in CI and at release)
+### Release-critical deterministic/CI gates
 
-1. `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSCROLLSHIFT_WARNINGS_AS_ERRORS=ON`, build, and full `ctest` pass (Debug warnings-as-errors plus ASan/UBSan are also expected; the automated suite includes the classifier matrix, service-unit ownership/migration matrix, auto-mode lifecycle, backoff policy, installer checksum failure cases, release verification partial cases, and the workflow checkout ordering regression).
-2. `sh -n` and `shellcheck` on all four public scripts; run `tests/installer_checksum_tests.sh` and `tests/release_verify_tests.sh`.
-3. Confirm `scrollshift service nonsense` exits 2 and performs no mutation.
-4. Verify website source and generated `public/` repositories are clean and all public shell scripts are byte-identical to `packaging/` (enforced pre-publication by the `website-parity` job).
+The following automated gates are assessed at the exact release-candidate SHA.
+They are spread across three layers — local pre-tag validation, the ordinary
+`CI` workflow (every push/PR), and the tag-triggered `Release artifacts`
+workflow. All of them passed for v0.1.1.
 
-These passed for v0.1.1, and the tag-triggered release workflow enforces them on every release.
+- **Pre-tag validation (run locally at the candidate SHA):** Debug and Release
+  warnings-as-errors builds; all C++ tests (15/15); ASan/UBSan with leak
+  detection; `scrollshift service nonsense` exits 2 and performs no mutation;
+  workflow YAML parsing; `git diff --check`.
+- **Ordinary `CI` workflow (every push/PR):** Debug warnings-as-errors build
+  with g++ and clang++ and full `ctest`; `sh -n` and ShellCheck on all four
+  public scripts; installer checksum tests; release verification tests;
+  workflow-checkout ordering regression.
+- **`Release artifacts` workflow (tag push):** Release warnings-as-errors
+  builds for x86-64 and aarch64 with `ctest` and compiled-version-vs-tag
+  agreement (linux jobs); installer-preflight (`sh -n` on public scripts,
+  installer checksum tests, release verification tests); website-parity (live
+  public scripts byte-identical to `packaging/`); publish (candidate
+  `SHA256SUMS` and asset-set verification before creation, existing-release
+  asset-set/manifest/checksum verification); public-download-smoke.
+
+ASan/UBSan and the `service nonsense`, workflow YAML and `git diff --check`
+checks are pre-tag validation requirements; they are not run by the
+tag-triggered `Release artifacts` workflow itself.
 
 ### Public download/install gates
 
-- **Public download path** (resolves `latest`, fetches and enforces the published `SHA256SUMS`, verified download/extraction, artifact version): verified for v0.1.1 locally and by the release workflow's `public-download-smoke` job.
+- **Public download path** (resolves `latest`, fetches and enforces the published `SHA256SUMS`, verified download/extraction, artifact version): verified for v0.1.1 locally and by that release run's download-only smoke job (then named `installer-public-smoke`; renamed `public-download-smoke` on post-release main for clarity). The generic future release procedure uses the name `public-download-smoke`.
 - **Public `install.sh` privileged lifecycle** (fresh install, `service install`, default `mode = auto` config creation, managed unit enable/start, `/usr/local/bin/scrollshift --version`), public `update.sh`, and public `uninstall.sh` with configuration preservation (and `--purge` only in a disposable environment): **outstanding**. These require a disposable systemd host that was not available at release time; do not mark them passed until exercised there.
 
 ### Real-hardware evidence already obtained
